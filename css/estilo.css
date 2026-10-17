@@ -61,14 +61,24 @@ a { color: inherit; }
 }
 .col { position: relative; width: var(--col-w); height: 100%; }
 .card { position: absolute; inset: 0; overflow: hidden; background: var(--col-bg); border-inline: 1px solid var(--line); }
+/* Capa: a imagem do TabNews é horizontal (1200x630). Em vez de ampliá-la e cortar o texto,
+   ela aparece inteira num cartão arredondado, sobre uma versão desfocada dela mesma. */
+.post .card::before {
+  content: ""; position: absolute; inset: -60px;
+  background: var(--capa) center / cover no-repeat;
+  filter: blur(30px) brightness(.42) saturate(1.1);
+}
 .thumb {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; object-position: center 35%;
-  filter: grayscale(.35) brightness(.62) contrast(1.05);
+  position: absolute; z-index: 1;
+  top: max(20%, calc(76px + env(safe-area-inset-top, 0px)));
+  left: 16px; width: calc(100% - 32px); height: auto; aspect-ratio: 1200 / 630;
+  object-fit: cover; border-radius: 12px;
+  box-shadow: 0 10px 40px rgb(0 0 0 / .55);
+  background: rgb(255 255 255 / .06);
 }
 .card::after {
-  content: ""; position: absolute; inset: 0;
-  background: linear-gradient(to bottom, rgb(0 0 0 / .35) 0%, rgb(0 0 0 / 0) 18%, rgb(0 0 0 / .15) 45%, rgb(0 0 0 / .92) 72%, #000 100%);
+  content: ""; position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(to bottom, rgb(0 0 0 / .35) 0%, rgb(0 0 0 / 0) 16%, rgb(0 0 0 / 0) 52%, rgb(0 0 0 / .9) 70%, #000 100%);
   pointer-events: none;
 }
 

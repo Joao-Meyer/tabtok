@@ -143,3 +143,35 @@ test('critério 8 (parcial): manifesto e ícones são servidos', async () => {
   }
   await ctx.close();
 });
+
+test('primeira visita num fim de semana: mostra o último dia com publicações', async () => {
+  // a última publicação foi há 2 dias; nada nas últimas 24 h
+  const limite = agora - 2 * DIA;
+  const antigas = desc.filter((p) => Date.parse(p.published_at) <= limite);
+  const ultimoDia = new Date(Date.parse(antigas[0].published_at));
+  ultimoDia.setHours(0, 0, 0, 0);
+  const doUltimoDia = antigas.filter((p) => Date.parse(p.published_at) >= ultimoDia.getTime()).length;
+
+  const ctx = await navegador.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.route('https://www.tabnews.com.br/**', (route) => {
+    const url = new URL(route.request().url());
+    const partes = url.pathname.split('/').filter(Boolean);
+    if (partes.length === 4) {
+      const pagina = Number(url.searchParams.get('page'));
+      const porPagina = Number(url.searchParams.get('per_page'));
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify(antigas.slice((pagina - 1) * porPagina, pagina * porPagina)) });
+    }
+    if (partes.length === 6) return route.fulfill({ contentType: 'image/svg+xml', body: THUMB });
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ body: 'texto' }) });
+  });
+  await ctx.route(/fonts\.(googleapis|gstatic)\.com|cdnjs\.cloudflare\.com/, (r) => r.abort());
+  const page = await ctx.newPage();
+  const erros = [];
+  page.on('pageerror', (e) => erros.push(e.message));
+  await page.goto(base);
+  await page.waitForSelector('.post');
+  assert.equal(await page.textContent('#counter'), `1 / ${doUltimoDia}`);
+  assert.match(await page.textContent('#toast'), /Nada nas últimas 24 h\. Mostrando/);
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});

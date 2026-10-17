@@ -27,6 +27,12 @@ export function dataCurta(ms) {
   return semPonto(fmtData.format(new Date(ms)));
 }
 
+/** "sex, 16 de out" */
+export function quandoDia(ms) {
+  const d = new Date(ms);
+  return `${semPonto(fmtDia.format(d))}, ${semPonto(fmtData.format(d))}`;
+}
+
 /** Dias inteiros desde `ms` (mínimo 1). */
 export function diasAtras(ms, agora = Date.now()) {
   return Math.max(1, Math.round((agora - ms) / DIA));

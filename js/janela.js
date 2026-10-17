@@ -42,3 +42,17 @@ export function selecionarItens(publicacoes, { inicio, inclusivo }) {
     .filter((p) => (inclusivo ? publicadoMs(p) >= inicio : publicadoMs(p) > inicio))
     .sort((a, b) => publicadoMs(a) - publicadoMs(b));
 }
+
+/**
+ * RN05, complemento: na primeira visita, se não houver nada nas últimas 24 horas
+ * (fim de semana, feriado), começa na meia-noite do dia da publicação mais recente.
+ * @param {ReturnType<typeof calcularJanela>} janela
+ * @param {Array<{published_at: string}>} publicacoes
+ * @returns {ReturnType<typeof calcularJanela> & {ultimoDia: true} | null} null se não houver publicação nenhuma
+ */
+export function janelaDoUltimoDia(janela, publicacoes) {
+  if (!publicacoes.length) return null;
+  const dia = new Date(Math.max(...publicacoes.map(publicadoMs)));
+  dia.setHours(0, 0, 0, 0);
+  return { ...janela, inicio: dia.getTime(), inclusivo: true, ultimoDia: true };
+}

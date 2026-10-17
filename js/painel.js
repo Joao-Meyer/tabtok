@@ -1,5 +1,5 @@
 // Painel do calendário: marcador atual, ir para uma data, voltar, zerar.
-import { DIA } from './config.js';
+import { DIA, REPOSITORIO, VERSAO } from './config.js';
 import { ATRIBUICAO } from './feed.js';
 import { inicioDoDia, paraCampoData, quandoCurto } from './tempo.js';
 import { esc } from './texto.js';
@@ -16,6 +16,10 @@ export function criarPainel({ marcador, modoAtual, aoIrParaData, aoVoltar, aoZer
   const $ = (s) => document.querySelector(s);
   const painel = $('#panel');
   $('#credito').innerHTML = ATRIBUICAO;
+  // Versão publicada (commit), para conferir se o app instalado já atualizou.
+  $('#versao').innerHTML = VERSAO === 'dev'
+    ? 'Versão de desenvolvimento.'
+    : `Versão <a href="${REPOSITORIO}/commit/${VERSAO}" target="_blank" rel="noopener">${VERSAO}</a>.`;
 
   function abrir() {
     const m = marcador.ms();

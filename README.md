@@ -14,7 +14,7 @@ Leitor da [Newsletter do Filipe Deschamps](https://filipedeschamps.com.br/newsle
 
 - **Feed vertical**, uma publicação por tela, com a capa gerada pelo TabNews ao fundo.
 - **Marcador de leitura automático.** Uma publicação conta como lida depois de 2 segundos na tela. Ao voltar, o feed começa na primeira não lida, e as novas ganham a etiqueta "nova".
-- **Primeira visita:** mostra as últimas 24 horas.
+- **Primeira visita:** mostra as últimas 24 horas. Se não houver nada nelas (a newsletter não publica no fim de semana), mostra o último dia com publicações.
 - **Muito tempo sem abrir:** carrega os últimos 7 dias e oferece carregar o restante desde o marcador.
 - **Ir para uma data:** lê desde um dia qualquer até hoje, sem mexer no marcador.
 - **Texto completo** com links para o TabNews e para a fonte ("Fonte: Yahoo Finance").

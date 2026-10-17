@@ -1,7 +1,7 @@
 // RN01 e RN05 a RN08: de onde o feed começa e o que entra nele.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { calcularJanela, selecionarItens } from '../js/janela.js';
+import { calcularJanela, janelaDoUltimoDia, selecionarItens } from '../js/janela.js';
 import { DIA, HORA } from '../js/config.js';
 
 const agora = Date.parse('2026-10-16T21:00:00Z');
@@ -45,4 +45,18 @@ test('selecionarItens: só depois do início, do mais antigo para o mais novo', 
   assert.deepEqual(exclusivo, ['2026-10-16T09:00:00Z', '2026-10-16T15:00:00Z']);
   const inclusivo = selecionarItens(lista, { inicio, inclusivo: true }).map((p) => p.published_at);
   assert.deepEqual(inclusivo, ['2026-10-15T12:00:00Z', '2026-10-16T09:00:00Z', '2026-10-16T15:00:00Z']);
+});
+
+test('primeira visita sem nada em 24 h: começa no último dia com publicações', () => {
+  // sábado à tarde; a última publicação foi na sexta à tarde, horário local
+  const sabado = new Date(2026, 9, 17, 18, 0).getTime();
+  const sexta = (h) => new Date(2026, 9, 16, h, 0).toISOString();
+  const lista = [pub(sexta(15)), pub(sexta(9)), pub(new Date(2026, 9, 15, 17, 0).toISOString())];
+  const j = calcularJanela({ agora: sabado, marcadorMs: null });
+  assert.equal(selecionarItens(lista, j).length, 0, 'nada nas últimas 24 h');
+  const u = janelaDoUltimoDia(j, lista);
+  assert.equal(u.ultimoDia, true);
+  assert.equal(u.inicio, new Date(2026, 9, 16, 0, 0).getTime(), 'meia-noite de sexta');
+  assert.deepEqual(selecionarItens(lista, u).map((p) => p.published_at), [sexta(9), sexta(15)]);
+  assert.equal(janelaDoUltimoDia(j, []), null);
 });

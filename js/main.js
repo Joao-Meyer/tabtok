@@ -2,10 +2,10 @@
 import { TEMPO_LIDO_MS, VISIVEL_MIN } from './config.js';
 import { criarCliente, urlNoTabNews } from './api.js';
 import { slideAviso, slideFim, slidePublicacao } from './feed.js';
-import { calcularJanela, selecionarItens } from './janela.js';
+import { calcularJanela, janelaDoUltimoDia, selecionarItens } from './janela.js';
 import { criarMarcador } from './marcador.js';
 import { criarPainel } from './painel.js';
-import { dataCurta, publicadoMs } from './tempo.js';
+import { dataCurta, publicadoMs, quandoDia } from './tempo.js';
 import { esc, mdParaHtml, textoPuro } from './texto.js';
 
 const $ = (s) => document.querySelector(s);
@@ -189,7 +189,16 @@ async function iniciar(opcoes = {}) {
     carregando('Buscando publicações…');
     await cliente.buscarAte(janela.inicio, (n) => { if (n > 1) carregando(`Buscando publicações… página ${n}`); });
     itens = selecionarItens(cliente.publicacoes(), janela);
+    // Primeira visita sem nada nas últimas 24 h (ex.: fim de semana): mostra o último dia com publicações.
+    if (!itens.length && janela.modo === 'primeira') {
+      const ultimoDia = janelaDoUltimoDia(janela, cliente.publicacoes());
+      if (ultimoDia) {
+        janela = ultimoDia;
+        itens = selecionarItens(cliente.publicacoes(), janela);
+      }
+    }
     renderizar();
+    if (janela.ultimoDia) toast(`Nada nas últimas 24 h. Mostrando ${quandoDia(janela.inicio)}`);
     if (janela.modo === 'marcador' && itens.length) {
       toast(`${itens.length} ${itens.length === 1 ? 'publicação nova' : 'publicações novas'}`);
     }

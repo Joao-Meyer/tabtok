@@ -16,6 +16,13 @@ export const PRIMEIRA_VISITA_H = 24;  // RN05: primeira visita mostra as última
 export const TEMPO_LIDO_MS = 2000;    // RN03: tempo visível para contar como lida
 export const VISIVEL_MIN = 0.6;       // RN03: fração do card que precisa estar na tela
 
+// Carregamento em lotes (evita pedir centenas de capas e textos de uma vez)
+export const LOTE_CARDS = 30;         // cards montados por vez no feed
+export const ANTECEDENCIA_LOTE = 5;   // monta o próximo lote a 5 cards do fim
+export const TEXTOS_SIMULTANEOS = 2;  // pedidos de texto ao mesmo tempo
+export const TENTATIVAS = 3;          // tentativas por texto quando o TabNews recusa
+export const ESPERA_BASE_MS = 1500;   // espera antes de tentar de novo (dobra a cada vez)
+
 export const CHAVE_MARCADOR = 'tabtok.marcador';
 
 export const HORA = 3600000;

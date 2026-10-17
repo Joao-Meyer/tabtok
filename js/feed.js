@@ -31,8 +31,8 @@ export function slidePublicacao(p, i, { nova }) {
   return `
   <section class="slide post" data-i="${i}" data-slug="${esc(p.slug)}" aria-label="${esc(p.title)}">
     <div class="col">
-      <div class="card" style="--capa: url(&quot;${capa}&quot;)">
-        <img class="thumb" loading="lazy" alt="" src="${capa}">
+      <div class="card">
+        <img class="thumb" alt="" data-src="${capa}">
         <div class="info">
           <button class="toggle" aria-expanded="false" aria-label="Expandir texto">${ICONES.seta}</button>
           <div class="meta"><span>${esc(quando(publicadoMs(p)))}</span>${nova ? '<span class="new">nova</span>' : ''}</div>

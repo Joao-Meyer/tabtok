@@ -1,6 +1,6 @@
 // Acesso à API pública do TabNews (seção 5 da especificação).
 // A lista vem do mais novo para o mais antigo; paginamos até passar do ponto de partida.
-import { API, MAX_PAGINAS, POR_PAGINA, SITE } from './config.js';
+import { API, ESPERA_BASE_MS, MAX_PAGINAS, POR_PAGINA, SITE, TENTATIVAS, TEXTOS_SIMULTANEOS } from './config.js';
 import { publicadoMs } from './tempo.js';
 
 export class ErroApi extends Error {
@@ -16,11 +16,39 @@ export const urlPublicacao = (slug) => `${API}/${encodeURIComponent(slug)}`;
 export const urlThumbnail = (slug) => `${API}/${encodeURIComponent(slug)}/thumbnail`;
 export const urlNoTabNews = (slug) => `${SITE}/${encodeURIComponent(slug)}`;
 
+const dormir = (ms) => new Promise((ok) => setTimeout(ok, ms));
+
+/**
+ * Fila com limite de tarefas ao mesmo tempo. A próxima a sair é a pedida por último
+ * (pilha): no feed, é o card que a pessoa está vendo agora, não os que ela já passou.
+ * @param {number} limite
+ * @returns {(tarefa: () => Promise<any>) => Promise<any>}
+ */
+export function criarFila(limite) {
+  let ativas = 0;
+  const pendentes = [];
+  function proxima() {
+    if (ativas >= limite || !pendentes.length) return;
+    const { tarefa, ok, erro } = pendentes.pop();
+    ativas++;
+    Promise.resolve()
+      .then(tarefa)
+      .then(ok, erro)
+      .finally(() => { ativas--; proxima(); });
+  }
+  return (tarefa) => new Promise((ok, erro) => { pendentes.push({ tarefa, ok, erro }); proxima(); });
+}
+
+/** Vale a pena tentar de novo? Sim para limite (429), erro do servidor (5xx) e falta de rede. */
+const temporario = (e) => e instanceof ErroApi && (e.status === null || e.status === 429 || e.status >= 500);
+
 /**
  * @param {object} [opcoes]
  * @param {typeof fetch} [opcoes.fetch]  permite trocar a rede por dados falsos nos testes
+ * @param {(ms: number) => Promise<void>} [opcoes.esperar]  pausa entre tentativas (nos testes, imediata)
  */
-export function criarCliente({ fetch: buscar = (...a) => globalThis.fetch(...a) } = {}) {
+export function criarCliente({ fetch: buscar = (...a) => globalThis.fetch(...a), esperar = dormir } = {}) {
+  const fila = criarFila(TEXTOS_SIMULTANEOS);
   const brutos = new Map();   // id -> publicação (deduplica: a paginação "anda" quando sai post novo)
   const corpos = new Map();   // slug -> Promise<string>
   let proximaPagina = 1;
@@ -82,10 +110,23 @@ export function criarCliente({ fetch: buscar = (...a) => globalThis.fetch(...a) 
       return esgotado;
     },
 
-    /** Texto (Markdown) de uma publicação, buscado uma vez por sessão. */
+    /**
+     * Texto (Markdown) de uma publicação, buscado uma vez por sessão.
+     * Passa pela fila (poucos pedidos ao mesmo tempo) e tenta de novo se o TabNews recusar.
+     */
     corpo(slug) {
       if (!corpos.has(slug)) {
-        const promessa = pedir(urlPublicacao(slug))
+        const tentar = async () => {
+          for (let n = 1; ; n++) {
+            try {
+              return await pedir(urlPublicacao(slug));
+            } catch (e) {
+              if (n >= TENTATIVAS || !temporario(e)) throw e;
+              await esperar(ESPERA_BASE_MS * 2 ** (n - 1));
+            }
+          }
+        };
+        const promessa = fila(tentar)
           .then((j) => j.body || '')
           .catch((e) => {
             corpos.delete(slug);

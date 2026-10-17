@@ -22,9 +22,10 @@ test('card mostra título escapado, fonte, contadores e etiqueta "nova"', () => 
   assert.match(html, /<span>204<\/span>/);
   assert.match(html, /<span>9<\/span>/);
   assert.match(html, /class="new">nova/);
-  assert.match(html, /<img class="thumb"[^>]*src="[^"]*NewsletterOficial\/ubuntu-sudo-rust\/thumbnail"/);
-  // a mesma capa vira o fundo desfocado do card
-  assert.match(html, /class="card" style="--capa: url\(&quot;[^"]*ubuntu-sudo-rust\/thumbnail&quot;\)"/);
+  // a capa só é pedida quando o card chega perto da tela: vem em data-src, sem src
+  assert.match(html, /<img class="thumb"[^>]*data-src="[^"]*NewsletterOficial\/ubuntu-sudo-rust\/thumbnail"/);
+  assert.doesNotMatch(html, /<img class="thumb"[^>]* src=/);
+  assert.doesNotMatch(html, /--capa/);
 });
 
 test('card sem source_url não mostra o botão de fonte', () => {

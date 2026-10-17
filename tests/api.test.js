@@ -1,8 +1,10 @@
 // Seção 5: paginação, deduplicação e erros da API, com a rede trocada por dados falsos.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { criarCliente, ErroApi } from '../js/api.js';
-import { MAX_PAGINAS, POR_PAGINA } from '../js/config.js';
+import { criarCliente, criarFila, ErroApi } from '../js/api.js';
+import { MAX_PAGINAS, POR_PAGINA, TENTATIVAS } from '../js/config.js';
+
+const semEspera = async () => {};
 
 // N publicações, uma a cada 10 minutos, da mais nova para a mais antiga (como a API devolve)
 function publicacoes(n, ultima = Date.parse('2026-10-16T18:00:00Z')) {
@@ -88,20 +90,74 @@ test('sem rede vira mensagem clara', async () => {
   await assert.rejects(criarCliente({ fetch }).buscarAte(0), /Sem conexão/);
 });
 
-test('corpo: busca uma vez e tenta de novo depois de erro', async () => {
+test('corpo: busca uma vez por sessão; erro definitivo (404) não insiste, mas deixa tentar depois', async () => {
   let chamadas = 0;
   let falhar = true;
   const fetch = async () => {
     chamadas++;
-    if (falhar) return { ok: false, status: 500, json: async () => ({}) };
+    if (falhar) return { ok: false, status: 404, json: async () => ({}) };
     return { ok: true, status: 200, json: async () => ({ body: 'texto **md**' }) };
   };
-  const cliente = criarCliente({ fetch });
+  const cliente = criarCliente({ fetch, esperar: semEspera });
   await assert.rejects(cliente.corpo('x'));
+  assert.equal(chamadas, 1);
   falhar = false;
   assert.equal(await cliente.corpo('x'), 'texto **md**');
   assert.equal(await cliente.corpo('x'), 'texto **md**');
   assert.equal(chamadas, 2);
+});
+
+test('corpo: quando o TabNews recusa (429), espera e tenta de novo, até a última tentativa', async () => {
+  // Recusa em todas as tentativas menos a última (com TENTATIVAS = 3: 429, 429, 200).
+  // Duas recusas, e não uma, para conferir duas coisas:
+  //  - que o app aguenta mais de uma recusa seguida e ainda acerta na última tentativa permitida;
+  //  - que a espera cresce entre as tentativas (1,5 s e depois 3 s), o que só dá para ver com duas esperas.
+  const respostas = [...Array(TENTATIVAS - 1).fill(429), 200];
+  let chamadas = 0;
+  const esperas = [];
+  const fetch = async () => {
+    chamadas++;
+    const status = respostas.shift();
+    return { ok: status === 200, status, json: async () => ({ body: 'ok' }) };
+  };
+  const cliente = criarCliente({ fetch, esperar: async (ms) => { esperas.push(ms); } });
+  assert.equal(await cliente.corpo('x'), 'ok');
+  assert.equal(chamadas, TENTATIVAS, 'acertou exatamente na última tentativa');
+  assert.equal(esperas.length, TENTATIVAS - 1, 'uma espera antes de cada nova tentativa');
+  assert.ok(esperas[1] > esperas[0], 'a espera aumenta a cada tentativa');
+});
+
+test('corpo: desiste depois do número máximo de tentativas', async () => {
+  let chamadas = 0;
+  const fetch = async () => { chamadas++; return { ok: false, status: 429, json: async () => ({}) }; };
+  await assert.rejects(criarCliente({ fetch, esperar: semEspera }).corpo('x'), /limitou/);
+  assert.equal(chamadas, TENTATIVAS);
+});
+
+test('fila: respeita o limite de tarefas ao mesmo tempo', async () => {
+  const fila = criarFila(2);
+  let ativas = 0;
+  let maximo = 0;
+  const tarefa = () => async () => {
+    ativas++;
+    maximo = Math.max(maximo, ativas);
+    await new Promise((r) => setTimeout(r, 5));
+    ativas--;
+  };
+  await Promise.all(Array.from({ length: 8 }, () => fila(tarefa())));
+  assert.equal(maximo, 2);
+});
+
+test('fila: atende primeiro o pedido mais recente (o card que está na tela)', async () => {
+  const fila = criarFila(1);
+  const ordem = [];
+  let liberar;
+  const primeira = fila(() => new Promise((r) => { liberar = r; })); // ocupa a fila
+  const pedidos = ['card 1', 'card 2', 'card 3'].map((nome) => fila(async () => { ordem.push(nome); }));
+  await new Promise((r) => setTimeout(r, 0)); // a fila começa a tarefa no próximo ciclo
+  liberar();
+  await Promise.all([primeira, ...pedidos]);
+  assert.deepEqual(ordem, ['card 3', 'card 2', 'card 1']);
 });
 
 test('reiniciar esquece o que foi buscado', async () => {

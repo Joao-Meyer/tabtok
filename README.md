@@ -33,7 +33,14 @@ As publicações vêm da [API pública do TabNews](https://www.tabnews.com.br), 
 | Texto | `GET /api/v1/contents/NewsletterOficial/{slug}` |
 | Capa | `GET /api/v1/contents/NewsletterOficial/{slug}/thumbnail` |
 
-A API não filtra por data. O app pagina do mais novo para o mais antigo até passar do ponto de partida, remove repetições e inverte a ordem. O texto de cada publicação só é buscado quando o card se aproxima da tela.
+A API não filtra por data. O app pagina do mais novo para o mais antigo até passar do ponto de partida, remove repetições e inverte a ordem.
+
+Para não sobrecarregar o TabNews quando o período é longo (um salto de meses pode trazer centenas de publicações):
+
+- o feed monta **30 cards por vez** e acrescenta o próximo lote quando a leitura chega perto do fim do atual;
+- a **capa e o texto** de cada publicação só são pedidos quando o card está a até uma tela de distância;
+- os textos passam por uma **fila** com no máximo 2 pedidos ao mesmo tempo, que atende primeiro o card que está na tela;
+- se o TabNews recusar um pedido (limite de requisições), o app **espera e tenta de novo**, com intervalos crescentes. Se ainda assim falhar, busca outra vez quando você volta àquele card.
 
 ## Estrutura
 

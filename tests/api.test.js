@@ -107,16 +107,23 @@ test('corpo: busca uma vez por sessão; erro definitivo (404) não insiste, mas 
   assert.equal(chamadas, 2);
 });
 
-test('corpo: quando o TabNews recusa (429), espera e tenta de novo', async () => {
-  const respostas = [429, 429, 200];
+test('corpo: quando o TabNews recusa (429), espera e tenta de novo, até a última tentativa', async () => {
+  // Recusa em todas as tentativas menos a última (com TENTATIVAS = 3: 429, 429, 200).
+  // Duas recusas, e não uma, para conferir duas coisas:
+  //  - que o app aguenta mais de uma recusa seguida e ainda acerta na última tentativa permitida;
+  //  - que a espera cresce entre as tentativas (1,5 s e depois 3 s), o que só dá para ver com duas esperas.
+  const respostas = [...Array(TENTATIVAS - 1).fill(429), 200];
+  let chamadas = 0;
   const esperas = [];
   const fetch = async () => {
+    chamadas++;
     const status = respostas.shift();
     return { ok: status === 200, status, json: async () => ({ body: 'ok' }) };
   };
   const cliente = criarCliente({ fetch, esperar: async (ms) => { esperas.push(ms); } });
   assert.equal(await cliente.corpo('x'), 'ok');
-  assert.equal(esperas.length, 2);
+  assert.equal(chamadas, TENTATIVAS, 'acertou exatamente na última tentativa');
+  assert.equal(esperas.length, TENTATIVAS - 1, 'uma espera antes de cada nova tentativa');
   assert.ok(esperas[1] > esperas[0], 'a espera aumenta a cada tentativa');
 });
 

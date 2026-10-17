@@ -2,6 +2,7 @@
   "name": "tabtok",
   "version": "1.0.0",
   "description": "Leitor da newsletter do Filipe Deschamps: uma publicação por tela, retomando de onde você parou.",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {

@@ -104,3 +104,7 @@ O projeto também foi um caso de teste de um fluxo de trabalho em etapas, cada u
 
 - Conteúdo: [TabNews](https://www.tabnews.com.br) e [Newsletter do Filipe Deschamps](https://filipedeschamps.com.br/newsletter). O TabTok é um projeto independente, sem vínculo oficial.
 - O painel do calendário usa a paleta do [curso.dev](https://curso.dev), também do Filipe, como homenagem.
+
+## Licença
+
+[MIT](LICENSE). O código pode ser usado, copiado e modificado livremente, desde que o aviso de licença acompanhe as cópias. O conteúdo exibido pelo app pertence ao TabNews e aos seus autores.

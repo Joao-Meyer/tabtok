@@ -1,5 +1,5 @@
 // Liga tudo: estado da sessão, carregamento, observadores de leitura e interações.
-import { TEMPO_LIDO_MS, VISIVEL_MIN } from './config.js';
+import { ANTECEDENCIA_LOTE, LOTE_CARDS, TEMPO_LIDO_MS, VISIVEL_MIN } from './config.js';
 import { criarCliente, urlNoTabNews } from './api.js';
 import { slideAviso, slideFim, slidePublicacao } from './feed.js';
 import { calcularJanela, selecionarItens } from './janela.js';
@@ -39,16 +39,51 @@ function erro(msg) {
   $('#retry').addEventListener('click', () => iniciar());
 }
 
-/* ---------- renderização ---------- */
+/* ---------- renderização em lotes ----------
+   Com centenas de publicações (ex.: "ir para uma data" antiga), montar todos os cards
+   de uma vez pesa e, pior, dispara centenas de pedidos ao TabNews. O feed monta
+   LOTE_CARDS por vez e acrescenta o próximo lote quando a leitura se aproxima do fim. */
+let montados = 0; // quantos cards de publicação já estão no feed
+
+function htmlDosCards(de, ate) {
+  return itens.slice(de, ate)
+    .map((p, k) => slidePublicacao(p, de + k, { nova: marcadorAoAbrir !== null && publicadoMs(p) > marcadorAoAbrir }))
+    .join('');
+}
+
+function ativarCards(de, ate) {
+  for (let i = de; i < ate; i++) {
+    const s = feed.querySelector(`.post[data-i="${i}"]`);
+    ligarCard(s);
+    obsVisivel.observe(s);
+    obsPerto.observe(s);
+  }
+  montados = ate;
+}
+
 function renderizar() {
+  // O primeiro lote entra junto com o resto do feed. Inserir cards antes do card que
+  // está na tela faria a rolagem com encaixe (scroll-snap) pular para o fim da fila.
+  const ate = Math.min(LOTE_CARDS, itens.length);
   feed.innerHTML =
     (janela.haMaisAntigas ? slideAviso({ desdeMarcador: janela.desdeMarcador }) : '') +
-    itens.map((p, i) => slidePublicacao(p, i, { nova: marcadorAoAbrir !== null && publicadoMs(p) > marcadorAoAbrir })).join('') +
+    htmlDosCards(0, ate) +
     slideFim({ modo: janela.modo, quantidade: itens.length, marcadorMs: marcador.ms() });
+  feed.dataset.total = String(itens.length); // total do período (os cards entram em lotes)
   feed.scrollTop = 0;
   observar();
   ligarBotoes();
+  ativarCards(0, ate);
   atualizarContador(janela.haMaisAntigas || !itens.length ? -1 : 0);
+}
+
+// Lotes seguintes: entram antes do card de fim, que está mais adiante na leitura.
+function montarProximoLote() {
+  if (montados >= itens.length) return;
+  const de = montados;
+  const ate = Math.min(de + LOTE_CARDS, itens.length);
+  feed.querySelector('[data-fim]').insertAdjacentHTML('beforebegin', htmlDosCards(de, ate));
+  ativarCards(de, ate);
 }
 
 function atualizarContador(i) {
@@ -58,7 +93,7 @@ function atualizarContador(i) {
   el.textContent = `${i + 1} / ${itens.length}`;
 }
 
-/* ---------- observadores: texto sob demanda, leitura (RN03) e contador ---------- */
+/* ---------- observadores: capa e texto sob demanda, leitura (RN03) e contador ---------- */
 let obsVisivel;
 let obsPerto;
 const timers = new Map();
@@ -69,11 +104,12 @@ function observar() {
   timers.forEach(clearTimeout);
   timers.clear();
 
+  // Perto da tela (até uma tela acima ou abaixo): pede a capa e o texto.
   obsPerto = new IntersectionObserver((entradas) => {
     for (const e of entradas) {
-      if (e.isIntersecting) { carregarCorpo(e.target); obsPerto.unobserve(e.target); }
+      if (e.isIntersecting) { carregarCapa(e.target); carregarCorpo(e.target); obsPerto.unobserve(e.target); }
     }
-  }, { root: feed, rootMargin: '200% 0px' });
+  }, { root: feed, rootMargin: '100% 0px' });
 
   obsVisivel = new IntersectionObserver((entradas) => {
     for (const e of entradas) {
@@ -81,7 +117,13 @@ function observar() {
       if (e.isIntersecting) {
         const i = el.dataset.i !== undefined ? Number(el.dataset.i) : -1;
         atualizarContador(i);
-        if (i >= 0) timers.set(el, setTimeout(() => marcador.avancar(itens[i].published_at), TEMPO_LIDO_MS));
+        if (i >= 0) {
+          timers.set(el, setTimeout(() => marcador.avancar(itens[i].published_at), TEMPO_LIDO_MS));
+          // perto do fim do que já foi montado: monta o próximo lote
+          if (i >= montados - ANTECEDENCIA_LOTE) montarProximoLote();
+          // se o texto falhou antes, tenta de novo ao voltar a ele
+          if (el.dataset.corpo === 'falhou') carregarCorpo(el);
+        }
       } else {
         clearTimeout(timers.get(el));
         timers.delete(el);
@@ -90,20 +132,34 @@ function observar() {
     }
   }, { root: feed, threshold: VISIVEL_MIN });
 
-  feed.querySelectorAll('.slide').forEach((s) => {
-    obsVisivel.observe(s);
-    if (s.classList.contains('post')) obsPerto.observe(s);
-  });
+  feed.querySelectorAll('.slide').forEach((s) => obsVisivel.observe(s));
+}
+
+function carregarCapa(slide) {
+  const img = slide.querySelector('.thumb');
+  if (!img?.dataset.src || img.getAttribute('src')) return;
+  // O fundo desfocado só usa a capa depois que ela chegou: assim o navegador
+  // reaproveita a imagem baixada, em vez de pedir a mesma capa duas vezes.
+  img.addEventListener('load', () => {
+    slide.querySelector('.card').style.setProperty('--capa', `url("${img.dataset.src}")`);
+  }, { once: true });
+  img.src = img.dataset.src;
 }
 
 async function carregarCorpo(slide) {
+  if (slide.dataset.corpo === 'carregando' || slide.dataset.corpo === 'ok') return;
+  slide.dataset.corpo = 'carregando';
   const resumo = slide.querySelector('.summary');
   try {
     const md = await cliente.corpo(slide.dataset.slug);
     resumo.textContent = textoPuro(md).slice(0, 320);
     slide.querySelector('.body').innerHTML = mdParaHtml(md);
+    slide.dataset.corpo = 'ok';
   } catch {
-    resumo.textContent = 'Não consegui carregar o texto. Abra no TabNews pelo link do texto expandido.';
+    slide.dataset.corpo = 'falhou';
+    resumo.textContent = 'Não consegui carregar o texto agora. Ele será buscado de novo quando você voltar a esta publicação.';
+    slide.querySelector('.body').innerHTML =
+      '<p>Não consegui carregar o texto agora.</p><p><button class="btn" data-retentar>Tentar de novo</button></p>';
   }
 }
 
@@ -113,21 +169,23 @@ function fecharTexto(slide) {
   slide.querySelector('.toggle')?.setAttribute('aria-expanded', 'false');
 }
 
-function ligarBotoes() {
-  feed.querySelectorAll('.post').forEach((s) => {
-    const alternar = () => {
-      const aberto = s.classList.toggle('expanded');
-      s.querySelector('.toggle').setAttribute('aria-expanded', String(aberto));
-      if (aberto) s.querySelector('.info').scrollTop = 0;
-    };
-    s.querySelector('.toggle').addEventListener('click', alternar);
-    s.querySelector('.title').addEventListener('click', alternar);
-    // Com o texto aberto, um toque fora dele (na parte de cima do card) volta ao resumo.
-    s.querySelector('.card').addEventListener('click', (e) => {
-      if (s.classList.contains('expanded') && !e.target.closest('.info')) alternar();
-    });
-    s.querySelector('[data-share]').addEventListener('click', () => compartilhar(itens[Number(s.dataset.i)]));
+function ligarCard(s) {
+  const alternar = () => {
+    const aberto = s.classList.toggle('expanded');
+    s.querySelector('.toggle').setAttribute('aria-expanded', String(aberto));
+    if (aberto) s.querySelector('.info').scrollTop = 0;
+  };
+  s.querySelector('.toggle').addEventListener('click', alternar);
+  s.querySelector('.title').addEventListener('click', alternar);
+  // Com o texto aberto, um toque fora dele (na parte de cima do card) volta ao resumo.
+  s.querySelector('.card').addEventListener('click', (e) => {
+    if (e.target.closest('[data-retentar]')) { carregarCorpo(s); return; }
+    if (s.classList.contains('expanded') && !e.target.closest('.info')) alternar();
   });
+  s.querySelector('[data-share]').addEventListener('click', () => compartilhar(itens[Number(s.dataset.i)]));
+}
+
+function ligarBotoes() {
   $('#loadOlder')?.addEventListener('click', carregarAntigas);
   $('#skipOlder')?.addEventListener('click', () => irPara(1));
   feed.querySelectorAll('[data-reload]').forEach((b) => b.addEventListener('click', () => iniciar(janela.modo === 'data' ? { data: janela.inicio } : {})));

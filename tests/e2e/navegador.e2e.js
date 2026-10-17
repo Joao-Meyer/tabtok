@@ -50,11 +50,15 @@ after(async () => {
   servidor?.close();
 });
 
+const pedidos = { capas: 0, textos: 0 };
+
 async function abrir({ viewport = { width: 390, height: 844 }, marcador } = {}) {
   const ctx = await navegador.newContext({ viewport });
   await ctx.route('https://www.tabnews.com.br/**', (route) => {
     const url = new URL(route.request().url());
     const partes = url.pathname.split('/').filter(Boolean); // api v1 contents NewsletterOficial [slug] [thumbnail]
+    if (partes.length === 6) pedidos.capas++;
+    if (partes.length === 5) pedidos.textos++;
     const cabecalhos = { 'access-control-allow-origin': '*' };
     if (partes.length === 4) {
       const pagina = Number(url.searchParams.get('page'));
@@ -78,7 +82,7 @@ async function abrir({ viewport = { width: 390, height: 844 }, marcador } = {}) 
 
 test('critérios 1, 2, 6 e 7: primeira visita, marcador, fonte e toque fora', async () => {
   const { ctx, page, erros } = await abrir();
-  assert.equal(await page.locator('.post').count(), contarDepois(agora - DIA));
+  assert.equal(await page.getAttribute('#feed', 'data-total'), String(contarDepois(agora - DIA)));
   await page.waitForTimeout(2600);
   assert.ok(await page.evaluate(() => localStorage.getItem('tabtok.marcador')), 'marcador criado após 2 s');
   const primeiro = page.locator('.post').first();
@@ -94,8 +98,8 @@ test('critério 3: marcador de 3 dias mostra só as seguintes, todas como "nova"
   const m = ultimoAntes(agora - 3 * DIA);
   const { ctx, page, erros } = await abrir({ viewport: { width: 1280, height: 860 }, marcador: m });
   const esperado = contarDepois(Date.parse(m));
-  assert.equal(await page.locator('.post').count(), esperado);
-  assert.equal(await page.locator('.meta .new').count(), esperado);
+  assert.equal(await page.getAttribute('#feed', 'data-total'), String(esperado));
+  assert.equal(await page.locator('.meta .new').count(), Math.min(esperado, 30), 'todos os cards montados são "nova"');
   await page.click('#next');
   await page.waitForTimeout(800);
   assert.equal(await page.textContent('#counter'), `2 / ${esperado}`);
@@ -107,10 +111,10 @@ test('critério 4: 14 dias fora mostra aviso e carrega o restante', async () => 
   const m = ultimoAntes(agora - 14 * DIA);
   const { ctx, page, erros } = await abrir({ marcador: m });
   assert.equal(await page.locator('[data-aviso]').count(), 1);
-  assert.equal(await page.locator('.post').count(), contarDepois(agora - 7 * DIA));
+  assert.equal(await page.getAttribute('#feed', 'data-total'), String(contarDepois(agora - 7 * DIA)));
   await page.click('#loadOlder');
   await page.waitForSelector('[data-aviso]', { state: 'detached' });
-  assert.equal(await page.locator('.post').count(), contarDepois(Date.parse(m)));
+  assert.equal(await page.getAttribute('#feed', 'data-total'), String(contarDepois(Date.parse(m))));
   assert.deepEqual(erros, []);
   await ctx.close();
 });
@@ -126,10 +130,36 @@ test('critério 5 e 9: salto de data não move o marcador; painel tem a atribui�
   await page.click('#goDate');
   await page.waitForTimeout(800);
   d.setHours(0, 0, 0, 0);
-  assert.equal(await page.locator('.post').count(), contarDepois(d.getTime(), true));
+  assert.equal(await page.getAttribute('#feed', 'data-total'), String(contarDepois(d.getTime(), true)));
   await page.waitForTimeout(2600);
   assert.equal(await page.evaluate(() => localStorage.getItem('tabtok.marcador')), m);
   assert.match(await page.locator('[data-fim]').textContent(), /Newsletter do Filipe Deschamps/);
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
+test('carregamento em lotes: salto longo monta 30 cards e só pede capas e textos perto da tela', async () => {
+  const { ctx, page, erros } = await abrir({ marcador: desc[0].published_at });
+  await page.click('#openPanel');
+  const d = new Date(agora - 19 * DIA);
+  await page.fill('#dateInput', `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+  pedidos.capas = 0;
+  pedidos.textos = 0;
+  await page.click('#goDate');
+  await page.waitForSelector('.post');
+  await page.waitForTimeout(1500);
+  d.setHours(0, 0, 0, 0);
+  const total = contarDepois(d.getTime(), true);
+  assert.ok(total > 60, `há ${total} publicações no período`);
+  assert.equal(await page.locator('.post').count(), 30, 'primeiro lote');
+  assert.equal(await page.textContent('#counter'), `1 / ${total}`, 'o feed começa no primeiro card, não pula para o fim');
+  assert.ok(pedidos.capas <= 6, `capas pedidas ao abrir: ${pedidos.capas}`);
+  assert.ok(pedidos.textos <= 6, `textos pedidos ao abrir: ${pedidos.textos}`);
+  for (let i = 0; i < 27; i++) { await page.keyboard.press('ArrowDown'); await page.waitForTimeout(500); }
+  await page.waitForTimeout(1500);
+  const onde = await page.textContent('#counter');
+  assert.match(onde, /^2\d \//, `rolou até ${onde}`);
+  assert.equal(await page.locator('.post').count(), 60, 'segundo lote montado perto do fim do primeiro');
   assert.deepEqual(erros, []);
   await ctx.close();
 });

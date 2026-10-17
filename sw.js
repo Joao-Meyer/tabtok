@@ -1,5 +1,5 @@
-// Service worker do TabTok: guarda só os arquivos do próprio app, para ele abrir rápido
-// e poder ser instalado. As publicações vêm sempre da API (não são guardadas aqui).
+// Service worker do TabTok: guarda só os arquivos do próprio app, para ele poder ser
+// instalado e abrir mesmo sem internet. As publicações vêm sempre da API (não são guardadas aqui).
 // __VERSAO__ é trocado pelo commit na publicação (GitHub Actions), o que renova o cache a cada versão.
 const CACHE = 'tabtok-__VERSAO__';
 
@@ -40,19 +40,21 @@ self.addEventListener('fetch', (e) => {
   // Só o próprio app; API, fontes e bibliotecas externas seguem direto para a rede.
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  if (e.request.mode === 'navigate') {
-    // Página: tenta a rede primeiro (para pegar versões novas); sem rede, usa a guardada.
-    e.respondWith(fetch(e.request).catch(() => caches.match('./index.html')));
-    return;
-  }
-  // Demais arquivos: responde do cache e atualiza em segundo plano.
+  // Rede primeiro, sempre conferindo com o servidor (cache: 'no-cache' revalida e
+  // ignora o cache HTTP de 10 minutos do GitHub Pages). Assim, com internet, o app
+  // sempre abre na versão publicada. Sem internet, usa a cópia guardada.
+  const pedido = e.request.mode === 'navigate'
+    ? new Request(url.href, { cache: 'no-cache' })
+    : new Request(e.request, { cache: 'no-cache' });
   e.respondWith(
     caches.open(CACHE).then(async (cache) => {
-      const guardado = await cache.match(e.request);
-      const daRede = fetch(e.request)
-        .then((r) => { if (r.ok) cache.put(e.request, r.clone()); return r; })
-        .catch(() => guardado);
-      return guardado || daRede;
+      try {
+        const resposta = await fetch(pedido);
+        if (resposta.ok) cache.put(e.request.mode === 'navigate' ? './index.html' : e.request, resposta.clone());
+        return resposta;
+      } catch {
+        return (await cache.match(e.request)) || (e.request.mode === 'navigate' ? cache.match('./index.html') : Response.error());
+      }
     }),
   );
 });

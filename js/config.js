@@ -6,6 +6,9 @@ export const TABNEWS = 'https://www.tabnews.com.br';
 export const NEWSLETTER = 'https://filipedeschamps.com.br/newsletter';
 export const REPOSITORIO = 'https://github.com/Joao-Meyer/tabtok';
 
+// Trocado pelo commit publicado no GitHub Actions; localmente fica "dev".
+export const VERSAO = '__VERSAO__'.startsWith('__') ? 'dev' : '__VERSAO__';
+
 export const POR_PAGINA = 100;        // máximo aceito pela API
 export const MAX_PAGINAS = 40;        // trava de segurança por carregamento
 export const LIMITE_DIAS = 7;         // RN07: ausência longa carrega só os últimos N dias

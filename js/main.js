@@ -209,9 +209,25 @@ const painel = criarPainel({
 });
 $('#openPanel').addEventListener('click', () => painel.abrir());
 
-/* ---------- PWA: só em HTTPS (o GitHub Pages) ---------- */
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  navigator.serviceWorker.register('./sw.js').catch(() => { /* o app funciona sem */ });
+/* ---------- PWA: em HTTPS (o GitHub Pages) ou no servidor local ---------- */
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  // Quando uma versão nova do app assume o controle, recarrega uma vez para usá-la.
+  // Na primeira instalação não há versão anterior, então não recarrega.
+  const haviaVersao = Boolean(navigator.serviceWorker.controller);
+  let recarregou = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!haviaVersao || recarregou) return;
+    recarregou = true;
+    location.reload();
+  });
+  navigator.serviceWorker.register('./sw.js')
+    .then((registro) => {
+      // Ao voltar para o app (ex.: reabrir pela tela inicial), procura versão nova.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') registro.update().catch(() => {});
+      });
+    })
+    .catch(() => { /* o app funciona sem */ });
 }
 
 iniciar();

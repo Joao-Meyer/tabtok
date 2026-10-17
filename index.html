@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TabTok</title>
+<meta name="description" content="Leitor da newsletter do Filipe Deschamps: uma publicação por tela, retomando de onde você parou.">
+<meta name="theme-color" content="#16151b">
+<link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;800&family=Ubuntu:wght@500;700&display=swap">
+<link rel="stylesheet" href="css/estilo.css">
+<!-- Markdown -> HTML (marked) e limpeza do HTML (DOMPurify). Sem eles, o texto aparece como parágrafos simples. -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h5.6l2.4 2.6h9A2.5 2.5 0 0 1 25 10.1v10.4A2.5 2.5 0 0 1 22.5 23h-17A2.5 2.5 0 0 1 3 20.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M3 11h22" stroke="currentColor" stroke-width="2.4"/></svg>
+    TabTok
+  </div>
+  <div class="top-right">
+    <span class="counter" id="counter" hidden></span>
+    <button class="icon-btn" id="openPanel" aria-label="Datas e marcador de leitura">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="feed" id="feed" tabindex="-1">
+  <div class="state"><div class="note-box"><div class="spinner" aria-hidden="true"></div><p>Buscando publicações…</p></div></div>
+</main>
+
+<nav class="nav" aria-label="Navegar entre publicações">
+  <button class="icon-btn" id="prev" aria-label="Publicação anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 15 7-7 7 7"/></svg></button>
+  <button class="icon-btn" id="next" aria-label="Próxima publicação"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg></button>
+</nav>
+
+<dialog id="panel" aria-label="Datas e marcador de leitura">
+  <button class="icon-btn close" id="closePanel" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <div class="sec">
+    <h3>Marcador de leitura</h3>
+    <p class="small" id="panelMark"></p>
+    <button class="btn" id="backToMark" hidden>Voltar ao ponto de leitura</button>
+  </div>
+  <div class="sec">
+    <label for="dateInput">Ir para uma data</label>
+    <div class="row">
+      <input type="date" id="dateInput">
+      <button class="btn primary" id="goDate">Ir</button>
+    </div>
+    <p class="small">O salto é temporário: ler publicações antigas não move o marcador para trás.</p>
+  </div>
+  <div class="sec">
+    <label>Recomeçar</label>
+    <button class="btn danger" id="resetMark">Zerar marcador (volta às últimas 24 horas)</button>
+    <div class="row" id="resetConfirm" hidden>
+      <button class="btn danger-solid" id="resetYes">Zerar</button>
+      <button class="btn" id="resetNo">Cancelar</button>
+    </div>
+  </div>
+  <div class="sec">
+    <label>Sobre</label>
+    <p class="credito" id="credito"></p>
+    <p class="credito">Código aberto no <a href="https://github.com/Joao-Meyer/tabtok" target="_blank" rel="noopener">GitHub</a>, escrito com IA (Claude).</p>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+</body>
+</html>

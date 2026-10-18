@@ -174,6 +174,9 @@ function fecharTexto(slide) {
   slide.querySelector('.toggle')?.setAttribute('aria-expanded', 'false');
 }
 
+// Mesmo limite do CSS (@media min-width: 760px): abaixo dele o layout é o de celular.
+const telaDeCelular = () => matchMedia('(max-width: 759px)').matches;
+
 function ligarCard(s) {
   const alternar = () => {
     const aberto = s.classList.toggle('expanded');
@@ -182,10 +185,16 @@ function ligarCard(s) {
   };
   s.querySelector('.toggle').addEventListener('click', alternar);
   s.querySelector('.title').addEventListener('click', alternar);
-  // Com o texto aberto, um toque fora dele (na parte de cima do card) volta ao resumo.
   s.querySelector('.card').addEventListener('click', (e) => {
     if (e.target.closest('[data-retentar]')) { carregarCorpo(s); return; }
-    if (s.classList.contains('expanded') && !e.target.closest('.info')) alternar();
+    if (e.target.closest('.toggle, .title')) return; // a setinha e o título já têm o seu próprio clique
+    if (s.classList.contains('expanded')) {
+      // Com o texto aberto, um toque fora dele (na parte de cima do card) volta ao resumo.
+      if (!e.target.closest('.info')) alternar();
+    } else if (telaDeCelular() && !e.target.closest('a, button')) {
+      // No celular, com o card fechado, tocar em qualquer ponto dele abre o texto.
+      alternar();
+    }
   });
   s.querySelector('[data-share]').addEventListener('click', () => compartilhar(itens[Number(s.dataset.i)]));
 }

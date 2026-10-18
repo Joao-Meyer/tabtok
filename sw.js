@@ -16,6 +16,7 @@ const ARQUIVOS = [
   './js/janela.js',
   './js/marcador.js',
   './js/painel.js',
+  './js/salto.js',
   './js/tempo.js',
   './js/texto.js',
   './icons/favicon.svg',

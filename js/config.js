@@ -24,6 +24,7 @@ export const TENTATIVAS = 3;          // tentativas por texto quando o TabNews r
 export const ESPERA_BASE_MS = 1500;   // espera antes de tentar de novo (dobra a cada vez)
 
 export const CHAVE_MARCADOR = 'tabtok.marcador';
+export const CHAVE_SALTO = 'tabtok.salto';
 
 export const HORA = 3600000;
 export const DIA = 24 * HORA;

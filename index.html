@@ -48,6 +48,7 @@
     <h3>Marcador de leitura</h3>
     <p class="small" id="panelMark"></p>
     <button class="btn" id="backToMark" hidden>Voltar ao ponto de leitura</button>
+    <button class="btn" id="resumeJump" hidden></button>
   </div>
   <div class="sec">
     <label for="dateInput">Ir para uma data</label>
@@ -55,7 +56,7 @@
       <input type="date" id="dateInput">
       <button class="btn primary" id="goDate">Ir</button>
     </div>
-    <p class="small">O salto é temporário: ler publicações antigas não move o marcador para trás.</p>
+    <p class="small">O salto é temporário: ler publicações antigas não move o marcador para trás. O app lembra onde você parou nele.</p>
   </div>
   <div class="sec">
     <label>Recomeçar</label>
@@ -72,6 +73,14 @@
     <p class="credito" id="versao"></p>
   </div>
 </dialog>
+
+<div class="retomar" id="retomar" role="region" aria-label="Continuar o salto de data" hidden>
+  <p id="retomarTexto"></p>
+  <div class="retomar-acoes">
+    <button class="btn primary" id="retomarSim">Continuar</button>
+    <button class="btn" id="retomarNao">Dispensar</button>
+  </div>
+</div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

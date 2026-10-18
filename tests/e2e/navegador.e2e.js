@@ -87,7 +87,14 @@ test('critérios 1, 2, 6 e 7: primeira visita, marcador, fonte e toque fora', as
   assert.ok(await page.evaluate(() => localStorage.getItem('tabtok.marcador')), 'marcador criado após 2 s');
   const primeiro = page.locator('.post').first();
   await primeiro.locator('.toggle').click();
-  assert.equal(await primeiro.locator('.links a').nth(1).textContent(), 'Fonte: Yahoo Finance');
+  // Qual é o primeiro card depende da hora em que o teste roda. Por isso confere os dois
+  // primeiros (ids vizinhos têm paridade diferente: ímpar = link direto, par = archive.today)
+  // e calcula a fonte esperada a partir do id de cada card.
+  for (const card of await page.locator('.post').all().then((l) => l.slice(0, 2))) {
+    const id = Number((await card.getAttribute('data-slug')).replace('publicacao-', ''));
+    const esperada = id % 2 ? 'Yahoo Finance' : 'The Verge';
+    assert.equal(await card.locator('.links a').nth(1).textContent(), `Fonte: ${esperada}`);
+  }
   await page.mouse.click(195, 120);
   assert.equal(await primeiro.evaluate((el) => el.classList.contains('expanded')), false);
   assert.deepEqual(erros, []);

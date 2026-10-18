@@ -205,3 +205,53 @@ test('primeira visita num fim de semana: mostra o último dia com publicações'
   assert.deepEqual(erros, []);
   await ctx.close();
 });
+
+test('RN11: lembra o ponto do salto de data e oferece continuar dali, sem mexer no marcador', async () => {
+  const marcador = desc[0].published_at;
+  const { ctx, page, erros } = await abrir({ marcador });
+
+  // salto para 5 dias atrás; lê três cards (2 s em cada)
+  const d = new Date(agora - 5 * DIA);
+  await page.click('#openPanel');
+  await page.fill('#dateInput', `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+  await page.click('#goDate');
+  await page.waitForSelector('.post');
+  d.setHours(0, 0, 0, 0);
+  const doSalto = posts.filter((p) => Date.parse(p.published_at) >= d.getTime()); // ordem: antiga -> nova
+  for (let i = 0; i < 3; i++) {
+    await page.waitForTimeout(2600);
+    if (i < 2) await page.keyboard.press('ArrowDown');
+  }
+  const parou = doSalto[2];
+
+  // reabre o app: o marcador segue onde estava e o app oferece continuar
+  await page.reload();
+  await page.waitForSelector('.slide'); // marcador na última publicação: o feed normal só tem o card de fim
+  assert.equal(await page.evaluate(() => localStorage.getItem('tabtok.marcador')), marcador, 'o marcador não mudou');
+  assert.equal(await page.isVisible('#retomar'), true);
+  assert.match(await page.textContent('#retomarTexto'), /Você parou em .*, no salto desde /);
+
+  // o painel também oferece
+  await page.click('#openPanel');
+  assert.match(await page.textContent('#resumeJump'), /^Continuar o salto de /);
+  await page.click('#closePanel');
+
+  // continuar: começa no card em que parou (aparece de novo como o primeiro)
+  await page.click('#retomarSim');
+  await page.waitForTimeout(800);
+  assert.equal(await page.getAttribute('#feed', 'data-total'), String(doSalto.length - 2));
+  assert.equal(await page.locator('.post').first().getAttribute('data-slug'), parou.slug);
+  assert.equal(await page.isVisible('#retomar'), false);
+  assert.equal(await page.evaluate(() => localStorage.getItem('tabtok.marcador')), marcador, 'continuar também não move o marcador');
+
+  // dispensar: some agora e não volta
+  await page.reload();
+  await page.waitForSelector('.slide'); // marcador na última publicação: o feed normal só tem o card de fim
+  assert.equal(await page.isVisible('#retomar'), true, 'o ponto continua guardado depois de continuar');
+  await page.click('#retomarNao');
+  await page.reload();
+  await page.waitForSelector('.slide'); // marcador na última publicação: o feed normal só tem o card de fim
+  assert.equal(await page.isVisible('#retomar'), false);
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});

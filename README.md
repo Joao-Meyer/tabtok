@@ -16,12 +16,12 @@ Leitor da [Newsletter do Filipe Deschamps](https://filipedeschamps.com.br/newsle
 - **Marcador de leitura automático.** Uma publicação conta como lida depois de 2 segundos na tela. Ao voltar, o feed começa na primeira não lida, e as novas ganham a etiqueta "nova".
 - **Primeira visita:** mostra as últimas 24 horas. Se não houver nada nelas (a newsletter não publica no fim de semana), mostra o último dia com publicações.
 - **Muito tempo sem abrir:** carrega os últimos 7 dias e oferece carregar o restante desde o marcador.
-- **Ir para uma data:** lê desde um dia qualquer até hoje, sem mexer no marcador.
+- **Ir para uma data:** lê desde um dia qualquer até hoje, sem mexer no marcador. O app lembra onde você parou no salto e, ao reabrir, oferece "Continuar" dali (aviso na tela e botão no painel).
 - **Texto completo** com links para o TabNews e para a fonte ("Fonte: Yahoo Finance").
 - **Instalável no celular** (PWA).
 - **Desktop:** setas na tela e no teclado (↑/↓ ou j/k).
 
-O marcador fica só no seu navegador (`localStorage`). Nada é enviado a lugar nenhum além das chamadas à API pública do TabNews.
+O marcador e o ponto do salto ficam só no seu navegador (`localStorage`). Nada é enviado a lugar nenhum além das chamadas à API pública do TabNews.
 
 ## Como funciona
 
@@ -54,6 +54,7 @@ js/
   api.js                chamadas à API, paginação, deduplicação
   janela.js             de onde o feed começa e o que entra nele (funções puras)
   marcador.js           marcador de leitura, que só anda para a frente
+  salto.js              ponto do salto de data, guardado à parte do marcador
   fontes.js             nome do site a partir do link da fonte
   texto.js              Markdown -> resumo e HTML sanitizado
   tempo.js              datas no formato brasileiro

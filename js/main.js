@@ -5,13 +5,15 @@ import { slideAviso, slideFim, slidePublicacao } from './feed.js';
 import { calcularJanela, janelaDoUltimoDia, selecionarItens } from './janela.js';
 import { criarMarcador } from './marcador.js';
 import { criarPainel } from './painel.js';
-import { dataCurta, publicadoMs, quandoDia } from './tempo.js';
+import { criarSalto } from './salto.js';
+import { dataCurta, publicadoMs, quandoCurto, quandoDia } from './tempo.js';
 import { esc, mdParaHtml, textoPuro } from './texto.js';
 
 const $ = (s) => document.querySelector(s);
 const feed = $('#feed');
 const cliente = criarCliente();
 const marcador = criarMarcador();
+const salto = criarSalto();
 
 /* ---------- estado da sessão ---------- */
 let janela = null;          // resultado de calcularJanela()
@@ -118,7 +120,10 @@ function observar() {
         const i = el.dataset.i !== undefined ? Number(el.dataset.i) : -1;
         atualizarContador(i);
         if (i >= 0) {
-          timers.set(el, setTimeout(() => marcador.avancar(itens[i].published_at), TEMPO_LIDO_MS));
+          timers.set(el, setTimeout(() => {
+            marcador.avancar(itens[i].published_at);
+            if (janela.modo === 'data') salto.avancar(itens[i].published_at); // RN11
+          }, TEMPO_LIDO_MS));
           // perto do fim do que já foi montado: monta o próximo lote
           if (i >= montados - ANTECEDENCIA_LOTE) montarProximoLote();
           // se o texto falhou antes, tenta de novo ao voltar a ele
@@ -188,7 +193,7 @@ function ligarCard(s) {
 function ligarBotoes() {
   $('#loadOlder')?.addEventListener('click', carregarAntigas);
   $('#skipOlder')?.addEventListener('click', () => irPara(1));
-  feed.querySelectorAll('[data-reload]').forEach((b) => b.addEventListener('click', () => iniciar(janela.modo === 'data' ? { data: janela.inicio } : {})));
+  feed.querySelectorAll('[data-reload]').forEach((b) => b.addEventListener('click', () => iniciar(janela.modo === 'data' ? { data: janela.inicio, manterSalto: true } : {})));
   feed.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => iniciar()));
   feed.querySelectorAll('[data-panel]').forEach((b) => b.addEventListener('click', () => painel.abrir()));
 }
@@ -241,6 +246,9 @@ async function carregarAntigas() {
 
 async function iniciar(opcoes = {}) {
   cliente.reiniciar();
+  ocultarRetomar();
+  // Um salto novo começa um ponto novo; retomar ou recarregar o mesmo trecho mantém o que já foi lido (RN11).
+  if (opcoes.data !== undefined && !opcoes.manterSalto) salto.comecar(opcoes.data);
   marcadorAoAbrir = marcador.ms();
   janela = calcularJanela({ agora: Date.now(), marcadorMs: marcadorAoAbrir, data: opcoes.data });
   try {
@@ -266,13 +274,34 @@ async function iniciar(opcoes = {}) {
   }
 }
 
+/* ---------- continuar de onde parou no salto (RN11) ---------- */
+function ocultarRetomar() { $('#retomar').hidden = true; }
+
+/** Recomeça no card onde o salto parou (ele aparece de novo como primeiro, para situar). */
+function retomarSalto() {
+  const s = salto.pendente(marcador.ms());
+  if (s) iniciar({ data: Date.parse(s.ponto), manterSalto: true });
+}
+
+/** Aviso ao abrir o app, quando há um salto a continuar. */
+function oferecerRetomar() {
+  const s = salto.pendente(marcador.ms());
+  if (!s || janela?.modo === 'data') return;
+  $('#retomarTexto').textContent = `Você parou em ${quandoCurto(Date.parse(s.ponto))}, no salto desde ${dataCurta(s.inicio)}.`;
+  $('#retomar').hidden = false;
+}
+$('#retomarSim').addEventListener('click', retomarSalto);
+$('#retomarNao').addEventListener('click', () => { salto.limpar(); ocultarRetomar(); });
+
 /* ---------- painel ---------- */
 const painel = criarPainel({
   marcador,
+  salto,
+  aoRetomar: retomarSalto,
   modoAtual: () => janela?.modo,
   aoIrParaData: (inicio) => iniciar({ data: inicio }),
   aoVoltar: () => iniciar(),
-  aoZerar: () => { marcador.zerar(); toast('Marcador zerado'); iniciar(); },
+  aoZerar: () => { marcador.zerar(); salto.limpar(); toast('Marcador zerado'); iniciar(); },
 });
 $('#openPanel').addEventListener('click', () => painel.abrir());
 
@@ -297,4 +326,4 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     .catch(() => { /* o app funciona sem */ });
 }
 
-iniciar();
+iniciar().then(oferecerRetomar);

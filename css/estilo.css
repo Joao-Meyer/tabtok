@@ -232,6 +232,18 @@ dialog .btn.danger-solid:hover { background: #cf3a30; }
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* aviso "continuar de onde parou" no salto de data (RN11) */
+.retomar {
+  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  width: min(92vw, 420px); z-index: 40; display: flex; flex-direction: column; gap: 10px;
+  background: var(--bg-elev, #2a2733); color: var(--fg); border: 1px solid rgb(255 255 255 / .14);
+  border-radius: 14px; padding: 12px 14px; box-shadow: 0 8px 28px rgb(0 0 0 / .45);
+}
+.retomar[hidden] { display: none; }
+.retomar p { margin: 0; font-size: .92rem; line-height: 1.35; }
+.retomar-acoes { display: flex; gap: 8px; }
+.retomar-acoes .btn { flex: 1; }
+
 @media (prefers-reduced-motion: reduce) {
   .feed { scroll-behavior: auto; }
   .toggle svg, .toast { transition: none; }

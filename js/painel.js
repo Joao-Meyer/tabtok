@@ -1,18 +1,20 @@
 // Painel do calendário: marcador atual, ir para uma data, voltar, zerar.
 import { DIA, REPOSITORIO, VERSAO } from './config.js';
 import { ATRIBUICAO } from './feed.js';
-import { inicioDoDia, paraCampoData, quandoCurto } from './tempo.js';
+import { dataCurta, inicioDoDia, paraCampoData, quandoCurto } from './tempo.js';
 import { esc } from './texto.js';
 
 /**
  * @param {object} p
  * @param {ReturnType<import('./marcador.js').criarMarcador>} p.marcador
+ * @param {ReturnType<import('./salto.js').criarSalto>} p.salto
+ * @param {() => void} p.aoRetomar
  * @param {() => string} p.modoAtual
  * @param {(inicioMs: number) => void} p.aoIrParaData
  * @param {() => void} p.aoVoltar
  * @param {() => void} p.aoZerar
  */
-export function criarPainel({ marcador, modoAtual, aoIrParaData, aoVoltar, aoZerar }) {
+export function criarPainel({ marcador, salto, aoRetomar, modoAtual, aoIrParaData, aoVoltar, aoZerar }) {
   const $ = (s) => document.querySelector(s);
   const painel = $('#panel');
   $('#credito').innerHTML = ATRIBUICAO;
@@ -27,6 +29,9 @@ export function criarPainel({ marcador, modoAtual, aoIrParaData, aoVoltar, aoZer
       ? 'Ainda não há marcador. Ele é criado quando você passa uns segundos numa publicação.'
       : `Lido até <span class="mark">${esc(quandoCurto(m))}</span>.`;
     $('#backToMark').hidden = modoAtual() !== 'data';
+    const s = salto.pendente(m);
+    $('#resumeJump').hidden = !s || modoAtual() === 'data';
+    if (s) $('#resumeJump').textContent = `Continuar o salto de ${dataCurta(s.inicio)} (parou em ${quandoCurto(Date.parse(s.ponto))})`;
     const hoje = new Date();
     $('#dateInput').max = paraCampoData(hoje);
     if (!$('#dateInput').value) $('#dateInput').value = paraCampoData(new Date(hoje.getTime() - DIA));
@@ -44,6 +49,7 @@ export function criarPainel({ marcador, modoAtual, aoIrParaData, aoVoltar, aoZer
     aoIrParaData(inicioDoDia(v));
   });
   $('#backToMark').addEventListener('click', () => { painel.close(); aoVoltar(); });
+  $('#resumeJump').addEventListener('click', () => { painel.close(); aoRetomar(); });
   $('#resetMark').addEventListener('click', () => { $('#resetMark').hidden = true; $('#resetConfirm').hidden = false; });
   $('#resetNo').addEventListener('click', () => { $('#resetMark').hidden = false; $('#resetConfirm').hidden = true; });
   $('#resetYes').addEventListener('click', () => { painel.close(); aoZerar(); });

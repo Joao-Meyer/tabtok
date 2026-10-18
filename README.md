@@ -17,7 +17,7 @@ Leitor da [Newsletter do Filipe Deschamps](https://filipedeschamps.com.br/newsle
 - **Primeira visita:** mostra as últimas 24 horas. Se não houver nada nelas (a newsletter não publica no fim de semana), mostra o último dia com publicações.
 - **Muito tempo sem abrir:** carrega os últimos 7 dias e oferece carregar o restante desde o marcador.
 - **Ir para uma data:** lê desde um dia qualquer até hoje, sem mexer no marcador. O app lembra onde você parou no salto e, ao reabrir, oferece "Continuar" dali (aviso na tela e botão no painel).
-- **Texto completo** com links para o TabNews e para a fonte ("Fonte: Yahoo Finance").
+- **Texto completo** com links para o TabNews e para a fonte ("Fonte: Yahoo Finance"). No celular, tocar no card abre o texto (a setinha e o título também); no desktop, a setinha ou o título.
 - **Instalável no celular** (PWA).
 - **Desktop:** setas na tela e no teclado (↑/↓ ou j/k).
 

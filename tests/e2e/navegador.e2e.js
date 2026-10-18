@@ -262,3 +262,37 @@ test('RN11: lembra o ponto do salto de data e oferece continuar dali, sem mexer 
   assert.deepEqual(erros, []);
   await ctx.close();
 });
+
+test('celular: tocar no card fechado abre o texto; título e setinha seguem alternando', async () => {
+  const { ctx, page, erros } = await abrir(); // 390 x 844
+  const card = page.locator('.post').first();
+  const aberto = () => card.evaluate((el) => el.classList.contains('expanded'));
+
+  await card.locator('.summary').click();
+  assert.equal(await aberto(), true, 'tocar no resumo abre');
+  await page.mouse.click(195, 120);
+  assert.equal(await aberto(), false, 'tocar fora do texto fecha');
+  await page.mouse.click(195, 300);
+  assert.equal(await aberto(), true, 'tocar na capa abre');
+  await card.locator('.title').click();
+  assert.equal(await aberto(), false, 'o título fecha (sem reabrir pelo toque no card)');
+  await card.locator('.title').click();
+  assert.equal(await aberto(), true, 'o título abre');
+  await card.locator('.toggle').click();
+  assert.equal(await aberto(), false, 'a setinha fecha');
+  await card.locator('.toggle').click();
+  assert.equal(await aberto(), true, 'a setinha abre');
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
+test('desktop: tocar no resumo não abre o texto (só a setinha ou o título)', async () => {
+  const { ctx, page, erros } = await abrir({ viewport: { width: 1280, height: 860 } });
+  const card = page.locator('.post').first();
+  await card.locator('.summary').click();
+  assert.equal(await card.evaluate((el) => el.classList.contains('expanded')), false);
+  await card.locator('.toggle').click();
+  assert.equal(await card.evaluate((el) => el.classList.contains('expanded')), true);
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});

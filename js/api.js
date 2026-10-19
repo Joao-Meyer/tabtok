@@ -13,7 +13,6 @@ export class ErroApi extends Error {
 
 export const urlPagina = (n) => `${API}?page=${n}&per_page=${POR_PAGINA}&strategy=new`;
 export const urlPublicacao = (slug) => `${API}/${encodeURIComponent(slug)}`;
-export const urlThumbnail = (slug) => `${API}/${encodeURIComponent(slug)}/thumbnail`;
 export const urlNoTabNews = (slug) => `${SITE}/${encodeURIComponent(slug)}`;
 
 const dormir = (ms) => new Promise((ok) => setTimeout(ok, ms));

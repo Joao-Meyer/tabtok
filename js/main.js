@@ -95,7 +95,7 @@ function atualizarContador(i) {
   el.textContent = `${i + 1} / ${itens.length}`;
 }
 
-/* ---------- observadores: capa e texto sob demanda, leitura (RN03) e contador ---------- */
+/* ---------- observadores: texto sob demanda, leitura (RN03) e contador ---------- */
 let obsVisivel;
 let obsPerto;
 const timers = new Map();
@@ -106,10 +106,10 @@ function observar() {
   timers.forEach(clearTimeout);
   timers.clear();
 
-  // Perto da tela (até uma tela acima ou abaixo): pede a capa e o texto.
+  // Perto da tela (até uma tela acima ou abaixo): pede o texto.
   obsPerto = new IntersectionObserver((entradas) => {
     for (const e of entradas) {
-      if (e.isIntersecting) { carregarCapa(e.target); carregarCorpo(e.target); obsPerto.unobserve(e.target); }
+      if (e.isIntersecting) { carregarCorpo(e.target); obsPerto.unobserve(e.target); }
     }
   }, { root: feed, rootMargin: '100% 0px' });
 
@@ -140,17 +140,6 @@ function observar() {
   feed.querySelectorAll('.slide').forEach((s) => obsVisivel.observe(s));
 }
 
-function carregarCapa(slide) {
-  const img = slide.querySelector('.thumb');
-  if (!img?.dataset.src || img.getAttribute('src')) return;
-  // O fundo desfocado só usa a capa depois que ela chegou: assim o navegador
-  // reaproveita a imagem baixada, em vez de pedir a mesma capa duas vezes.
-  img.addEventListener('load', () => {
-    slide.querySelector('.card').style.setProperty('--capa', `url("${img.dataset.src}")`);
-  }, { once: true });
-  img.src = img.dataset.src;
-}
-
 async function carregarCorpo(slide) {
   if (slide.dataset.corpo === 'carregando' || slide.dataset.corpo === 'ok') return;
   slide.dataset.corpo = 'carregando';
@@ -177,26 +166,67 @@ function fecharTexto(slide) {
 // Mesmo limite do CSS (@media min-width: 760px): abaixo dele o layout é o de celular.
 const telaDeCelular = () => matchMedia('(max-width: 759px)').matches;
 
+/** Gesto no texto aberto: arrastar para cima rola o texto; para baixo volta; já no topo, fecha. */
+const LIMIAR_ARRASTE = 8;   // px até o gesto ter direção
+const LIMIAR_FECHAR = 40;   // px para baixo, no topo, para fechar
+let engoliClique = 0;       // depois de um arraste, o clique que o navegador possa gerar é ignorado
+
+function ligarArraste(s, fechar) {
+  const card = s.querySelector('.card');
+  const info = s.querySelector('.rolagem'); // o texto que rola; o cabeçalho fica fixo
+  let g = null; // { y0, topo0, dentro, modo }
+
+  card.addEventListener('touchstart', (e) => {
+    if (!s.classList.contains('expanded') || e.touches.length !== 1) { g = null; return; }
+    g = { y0: e.touches[0].clientY, topo0: info.scrollTop, dentro: info.contains(e.target), modo: null, dy: 0 };
+  }, { passive: true });
+
+  card.addEventListener('touchmove', (e) => {
+    if (!g) return;
+    const dy = g.y0 - e.touches[0].clientY; // positivo: dedo subindo
+    g.dy = dy;
+    if (!g.modo && Math.abs(dy) >= LIMIAR_ARRASTE) {
+      const max = info.scrollHeight - info.clientHeight;
+      if (dy > 0) g.modo = info.scrollTop < max - 1 ? 'rolar' : 'livre'; // sem mais texto: o feed segue para a próxima
+      else g.modo = info.scrollTop > 0 ? 'rolar' : 'fechar';
+    }
+    if (!g.modo || g.modo === 'livre') return;
+    engoliClique = Date.now();
+    if (g.modo === 'fechar') { if (e.cancelable) e.preventDefault(); return; }
+    // Começou dentro do texto: o próprio navegador rola (com inércia). Fora dele, rolamos à mão.
+    if (!g.dentro) { if (e.cancelable) e.preventDefault(); info.scrollTop = g.topo0 + dy; }
+  }, { passive: false });
+
+  const fim = () => {
+    if (g?.modo === 'fechar' && -g.dy >= LIMIAR_FECHAR && s.classList.contains('expanded')) fechar();
+    g = null;
+  };
+  card.addEventListener('touchend', fim);
+  card.addEventListener('touchcancel', () => { g = null; });
+}
+
 function ligarCard(s) {
   const alternar = () => {
     const aberto = s.classList.toggle('expanded');
     s.querySelector('.toggle').setAttribute('aria-expanded', String(aberto));
-    if (aberto) s.querySelector('.info').scrollTop = 0;
+    if (aberto) s.querySelector('.rolagem').scrollTop = 0;
   };
   s.querySelector('.toggle').addEventListener('click', alternar);
   s.querySelector('.title').addEventListener('click', alternar);
   s.querySelector('.card').addEventListener('click', (e) => {
+    if (Date.now() - engoliClique < 400) return; // era o fim de um arraste, não um toque
     if (e.target.closest('[data-retentar]')) { carregarCorpo(s); return; }
     if (e.target.closest('.toggle, .title')) return; // a setinha e o título já têm o seu próprio clique
     if (s.classList.contains('expanded')) {
       // Com o texto aberto, um toque fora dele (na parte de cima do card) volta ao resumo.
       if (!e.target.closest('.info')) alternar();
-    } else if (telaDeCelular() && !e.target.closest('a, button')) {
-      // No celular, com o card fechado, tocar em qualquer ponto dele abre o texto.
+    } else if (e.target.closest('.capa-texto') || (telaDeCelular() && !e.target.closest('a, button'))) {
+      // O cartão do título abre em qualquer tela; no celular, qualquer ponto do card fechado abre.
       alternar();
     }
   });
   s.querySelector('[data-share]').addEventListener('click', () => compartilhar(itens[Number(s.dataset.i)]));
+  ligarArraste(s, () => { if (s.classList.contains('expanded')) alternar(); });
 }
 
 function ligarBotoes() {

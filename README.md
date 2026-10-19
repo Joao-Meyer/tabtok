@@ -12,12 +12,12 @@ Leitor da [Newsletter do Filipe Deschamps](https://filipedeschamps.com.br/newsle
 
 ## O que ele faz
 
-- **Feed vertical**, uma publicação por tela, com a capa gerada pelo TabNews ao fundo.
+- **Feed vertical**, uma publicação por tela. O título aparece inteiro num cartão claro (no estilo do card do TabNews), sobre um degradê sóbrio que tem sempre a mesma cor para a mesma notícia. TabCoins e comentários aparecem como números na linha da data.
 - **Marcador de leitura automático.** Uma publicação conta como lida depois de 2 segundos na tela. Ao voltar, o feed começa na primeira não lida, e as novas ganham a etiqueta "nova".
 - **Primeira visita:** mostra as últimas 24 horas. Se não houver nada nelas (a newsletter não publica no fim de semana), mostra o último dia com publicações.
 - **Muito tempo sem abrir:** carrega os últimos 7 dias e oferece carregar o restante desde o marcador.
 - **Ir para uma data:** lê desde um dia qualquer até hoje, sem mexer no marcador. O app lembra onde você parou no salto e, ao reabrir, oferece "Continuar" dali (aviso na tela e botão no painel).
-- **Texto completo** com links para o TabNews e para a fonte ("Fonte: Yahoo Finance"). No celular, tocar no card abre o texto (a setinha e o título também); no desktop, a setinha ou o título.
+- **Texto completo** com links para o TabNews e para a fonte ("Fonte: Yahoo Finance"). No celular, tocar no card abre o texto (a setinha e o título também); no desktop, o cartão do título, a setinha ou o título. Com o texto aberto, o cabeçalho (data, números, compartilhar e título) fica fixo e só o texto rola. No celular, arrastar para cima rola o texto, para baixo volta e, já no topo, fecha.
 - **Instalável no celular** (PWA).
 - **Desktop:** setas na tela e no teclado (↑/↓ ou j/k).
 
@@ -31,14 +31,13 @@ As publicações vêm da [API pública do TabNews](https://www.tabnews.com.br), 
 |---|---|
 | Lista | `GET /api/v1/contents/NewsletterOficial?page=N&per_page=100&strategy=new` |
 | Texto | `GET /api/v1/contents/NewsletterOficial/{slug}` |
-| Capa | `GET /api/v1/contents/NewsletterOficial/{slug}/thumbnail` |
 
 A API não filtra por data. O app pagina do mais novo para o mais antigo até passar do ponto de partida, remove repetições e inverte a ordem.
 
 Para não sobrecarregar o TabNews quando o período é longo (um salto de meses pode trazer centenas de publicações):
 
 - o feed monta **30 cards por vez** e acrescenta o próximo lote quando a leitura chega perto do fim do atual;
-- a **capa e o texto** de cada publicação só são pedidos quando o card está a até uma tela de distância;
+- o **texto** de cada publicação só é pedido quando o card está a até uma tela de distância;
 - os textos passam por uma **fila** com no máximo 2 pedidos ao mesmo tempo, que atende primeiro o card que está na tela;
 - se o TabNews recusar um pedido (limite de requisições), o app **espera e tenta de novo**, com intervalos crescentes. Se ainda assim falhar, busca outra vez quando você volta àquele card.
 

@@ -50,10 +50,10 @@ after(async () => {
   servidor?.close();
 });
 
-const pedidos = { capas: 0, textos: 0 };
+const pedidos = { capas: 0, textos: 0 }; // capas deve ficar em 0: o app não pede mais a imagem do TabNews
 
-async function abrir({ viewport = { width: 390, height: 844 }, marcador } = {}) {
-  const ctx = await navegador.newContext({ viewport });
+async function abrir({ viewport = { width: 390, height: 844 }, marcador, toque = false } = {}) {
+  const ctx = await navegador.newContext(toque ? { viewport, hasTouch: true, isMobile: true } : { viewport });
   await ctx.route('https://www.tabnews.com.br/**', (route) => {
     const url = new URL(route.request().url());
     const partes = url.pathname.split('/').filter(Boolean); // api v1 contents NewsletterOficial [slug] [thumbnail]
@@ -145,7 +145,7 @@ test('critério 5 e 9: salto de data não move o marcador; painel tem a atribui�
   await ctx.close();
 });
 
-test('carregamento em lotes: salto longo monta 30 cards e só pede capas e textos perto da tela', async () => {
+test('carregamento em lotes: salto longo monta 30 cards e só pede textos perto da tela, nenhuma capa', async () => {
   const { ctx, page, erros } = await abrir({ marcador: desc[0].published_at });
   await page.click('#openPanel');
   const d = new Date(agora - 19 * DIA);
@@ -160,7 +160,7 @@ test('carregamento em lotes: salto longo monta 30 cards e só pede capas e texto
   assert.ok(total > 60, `há ${total} publicações no período`);
   assert.equal(await page.locator('.post').count(), 30, 'primeiro lote');
   assert.equal(await page.textContent('#counter'), `1 / ${total}`, 'o feed começa no primeiro card, não pula para o fim');
-  assert.ok(pedidos.capas <= 6, `capas pedidas ao abrir: ${pedidos.capas}`);
+  assert.equal(pedidos.capas, 0, 'o app não pede a imagem de capa');
   assert.ok(pedidos.textos <= 6, `textos pedidos ao abrir: ${pedidos.textos}`);
   for (let i = 0; i < 27; i++) { await page.keyboard.press('ArrowDown'); await page.waitForTimeout(500); }
   await page.waitForTimeout(1500);
@@ -273,15 +273,21 @@ test('celular: tocar no card fechado abre o texto; título e setinha seguem alte
   await page.mouse.click(195, 120);
   assert.equal(await aberto(), false, 'tocar fora do texto fecha');
   await page.mouse.click(195, 300);
-  assert.equal(await aberto(), true, 'tocar na capa abre');
+  assert.equal(await aberto(), true, 'tocar no cartão do título abre');
   await card.locator('.title').click();
   assert.equal(await aberto(), false, 'o título fecha (sem reabrir pelo toque no card)');
+  await card.locator('.capa-texto').click();
+  assert.equal(await aberto(), true, 'o cartão do título abre');
   await card.locator('.title').click();
-  assert.equal(await aberto(), true, 'o título abre');
-  await card.locator('.toggle').click();
-  assert.equal(await aberto(), false, 'a setinha fecha');
+  assert.equal(await aberto(), false, 'o título fecha de novo');
   await card.locator('.toggle').click();
   assert.equal(await aberto(), true, 'a setinha abre');
+  await card.locator('.title').click();
+  assert.equal(await aberto(), false, 'o título fecha');
+  await card.locator('.toggle').click();
+  assert.equal(await aberto(), true, 'a setinha abre');
+  await card.locator('.toggle').click();
+  assert.equal(await aberto(), false, 'a setinha fecha');
   assert.deepEqual(erros, []);
   await ctx.close();
 });
@@ -293,6 +299,110 @@ test('desktop: tocar no resumo não abre o texto (só a setinha ou o título)', 
   assert.equal(await card.evaluate((el) => el.classList.contains('expanded')), false);
   await card.locator('.toggle').click();
   assert.equal(await card.evaluate((el) => el.classList.contains('expanded')), true);
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
+test('desktop: o cartão do título abre o texto', async () => {
+  const { ctx, page, erros } = await abrir({ viewport: { width: 1280, height: 860 } });
+  const card = page.locator('.post').first();
+  await card.locator('.capa-texto').click();
+  assert.equal(await card.evaluate((el) => el.classList.contains('expanded')), true);
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
+test('o título aparece uma vez só: no cartão (fechado) ou na área de texto (aberto)', async () => {
+  const { ctx, page, erros } = await abrir();
+  const card = page.locator('.post').first();
+  const estado = () => card.evaluate((el) => {
+    const visivel = (q) => { const e = el.querySelector(q); const r = e.getBoundingClientRect(); return r.width > 2 && r.height > 2 && getComputedStyle(e).opacity !== '0'; };
+    return { cartao: visivel('.capa-texto'), texto: visivel('.title') };
+  });
+  assert.deepEqual(await estado(), { cartao: true, texto: false }, 'fechado');
+  await card.locator('.toggle').click();
+  await page.waitForTimeout(350); // o cartão some com uma transição
+  assert.deepEqual(await estado(), { cartao: false, texto: true }, 'aberto');
+
+  // TabCoins e comentários: números simples na linha da data, sem link, nos dois estados
+  const meta = card.locator('.meta');
+  assert.equal(await meta.locator('a').count(), 0);
+  assert.equal(await meta.locator('.num').count(), 2);
+  assert.match(await meta.textContent(), /\d/);
+  assert.equal(await card.locator('.rail').count(), 0, 'sem coluna lateral');
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
+test('título longo cabe inteiro no cartão, sem encostar no resumo', async () => {
+  const { ctx, page, erros } = await abrir();
+  const medidas = await page.evaluate(() => {
+    const s = document.querySelector('.post');
+    const cartao = s.querySelector('.capa-texto');
+    const titulo = 'Título muito longo de uma notícia que ocupa várias linhas no cartão e precisa aparecer por completo '.repeat(2).trim().slice(0, 250);
+    cartao.dataset.tam = 'p';
+    s.querySelector('.capa-titulo').textContent = titulo;
+    const c = cartao.getBoundingClientRect();
+    const t = s.querySelector('.capa-titulo');
+    return { fimDoCartao: c.bottom, inicioDoTexto: s.querySelector('.toggle').getBoundingClientRect().top, cortado: t.scrollHeight > t.clientHeight };
+  });
+  assert.equal(medidas.cortado, false);
+  assert.ok(medidas.fimDoCartao < medidas.inicioDoTexto, `cartão termina em ${medidas.fimDoCartao}, texto começa em ${medidas.inicioDoTexto}`);
+  assert.equal(await page.locator('.post img').count(), 0, 'sem imagem de capa');
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
+/** Arrasto de verdade com o dedo (eventos de toque do Chromium). dy negativo = dedo subindo. */
+async function arrastar(page, x, y, dy) {
+  const cdp = await page.context().newCDPSession(page);
+  const toque = (type, yy) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y: yy }] });
+  await toque('touchStart', y);
+  const passos = 12;
+  for (let i = 1; i <= passos; i++) { await toque('touchMove', y + (dy * i) / passos); await page.waitForTimeout(16); }
+  await toque('touchEnd', y + dy);
+  await page.waitForTimeout(400);
+}
+
+test('celular, texto aberto: arrastar para cima rola o texto, para baixo volta e, no topo, fecha', async () => {
+  const { ctx, page, erros } = await abrir({ toque: true });
+  const card = page.locator('.post').first();
+  await page.waitForFunction(() => document.querySelector('.post').dataset.corpo === 'ok');
+  const aberto = () => card.evaluate((el) => el.classList.contains('expanded'));
+  const topo = () => card.locator('.rolagem').evaluate((el) => el.scrollTop);
+  const indice = () => page.textContent('#counter');
+
+  for (const [nome, ondeComeca] of [['pela parte de cima do card', 120], ['dentro do texto', 700]]) {
+    await card.locator('.toggle').click();
+    assert.equal(await aberto(), true, `${nome}: abre`);
+    assert.equal(await topo(), 0);
+
+    await arrastar(page, 195, ondeComeca, -220);
+    const rolado = await topo();
+    assert.ok(rolado > 100, `${nome}: arrastar para cima rolou o texto (${rolado})`);
+    assert.equal(await aberto(), true, `${nome}: segue aberto`);
+    assert.equal(await indice(), '1 / ' + (await page.getAttribute('#feed', 'data-total')), `${nome}: o feed não saiu do card`);
+    const cab = await card.locator('.cabeca').boundingBox();
+    assert.ok(cab && cab.y > 0 && cab.y + cab.height < 844, `${nome}: o cabeçalho (título e compartilhar) continua na tela`);
+    assert.equal(await card.locator('[data-share]').isVisible(), true, `${nome}: compartilhar segue visível durante a rolagem`);
+
+    await arrastar(page, 195, ondeComeca, 120);
+    const voltou = await topo();
+    assert.ok(voltou < rolado, `${nome}: arrastar para baixo voltou o texto (${rolado} -> ${voltou})`);
+    assert.equal(await aberto(), true, `${nome}: ainda aberto, pois o texto não estava no topo`);
+
+    await arrastar(page, 195, ondeComeca, 600); // até o topo
+    assert.equal(await topo(), 0, `${nome}: chegou ao topo`);
+    assert.equal(await aberto(), true, `${nome}: chegar ao topo não fecha`);
+
+    await arrastar(page, 195, ondeComeca, 160);
+    assert.equal(await aberto(), false, `${nome}: já no topo, arrastar para baixo fecha`);
+    assert.equal(await indice(), '1 / ' + (await page.getAttribute('#feed', 'data-total')), `${nome}: o feed continuou no mesmo card`);
+  }
+
+  // card fechado: arrastar continua trocando de notícia como antes
+  await arrastar(page, 195, 600, -500);
+  await page.waitForFunction(() => document.querySelector('#counter').textContent.startsWith('2 /'));
   assert.deepEqual(erros, []);
   await ctx.close();
 });

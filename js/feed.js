@@ -19,13 +19,6 @@ export const ATRIBUICAO =
   `<a href="${NEWSLETTER}" target="_blank" rel="noopener">Newsletter do Filipe Deschamps</a>. ` +
   'O TabTok é um projeto independente, sem vínculo oficial.';
 
-/** Matiz (0 a 359) do degradê de fundo, sempre o mesmo para o mesmo slug. */
-export function matiz(slug) {
-  let h = 0;
-  for (const c of String(slug)) h = (h * 31 + c.charCodeAt(0)) % 360;
-  return h;
-}
-
 /** Tamanho da letra do título no card: g (curto), m (médio) ou p (longo), para o título caber inteiro. */
 export const tamanhoTitulo = (titulo) => (titulo.length <= 60 ? 'g' : titulo.length <= 110 ? 'm' : 'p');
 
@@ -46,7 +39,7 @@ export function slidePublicacao(p, i, { nova }) {
   return `
   <section class="slide post" data-i="${i}" data-slug="${esc(p.slug)}" aria-label="${esc(p.title)}">
     <div class="col">
-      <div class="card" style="--h:${matiz(p.slug)}">
+      <div class="card">
         <div class="capa-texto" data-tam="${tamanhoTitulo(p.title)}">
           ${ICONES.pasta}
           <p class="capa-titulo" aria-hidden="true">${esc(p.title)}</p>

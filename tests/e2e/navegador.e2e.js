@@ -364,7 +364,7 @@ async function arrastar(page, x, y, dy) {
   await page.waitForTimeout(400);
 }
 
-test('celular, texto aberto: arrastar para cima rola o texto, para baixo volta e, no topo, fecha', async () => {
+test('celular, texto aberto: arrastar para cima rola o texto, para baixo volta e, no topo ou no fim, fecha', async () => {
   const { ctx, page, erros } = await abrir({ toque: true });
   const card = page.locator('.post').first();
   await page.waitForFunction(() => document.querySelector('.post').dataset.corpo === 'ok');
@@ -398,6 +398,14 @@ test('celular, texto aberto: arrastar para cima rola o texto, para baixo volta e
     await arrastar(page, 195, ondeComeca, 160);
     assert.equal(await aberto(), false, `${nome}: já no topo, arrastar para baixo fecha`);
     assert.equal(await indice(), '1 / ' + (await page.getAttribute('#feed', 'data-total')), `${nome}: o feed continuou no mesmo card`);
+
+    // fim da rolagem: chegar lá não fecha, mas arrastar mais para cima fecha
+    await card.locator('.toggle').click();
+    await card.locator('.rolagem').evaluate((el) => { el.scrollTop = el.scrollHeight; });
+    assert.equal(await aberto(), true, `${nome}: chegar ao fim não fecha`);
+    await arrastar(page, 195, ondeComeca, -160);
+    assert.equal(await aberto(), false, `${nome}: já no fim, arrastar para cima fecha`);
+    assert.equal(await indice(), '1 / ' + (await page.getAttribute('#feed', 'data-total')), `${nome}: o feed continuou no mesmo card depois de fechar pelo fim`);
   }
 
   // card fechado: arrastar continua trocando de notícia como antes

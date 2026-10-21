@@ -1,7 +1,7 @@
 // Seção 4: conteúdo dos cards e atribuição (critério 9).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ATRIBUICAO, matiz, slideAviso, slideFim, slidePublicacao, tamanhoTitulo } from '../js/feed.js';
+import { ATRIBUICAO, slideAviso, slideFim, slidePublicacao, tamanhoTitulo } from '../js/feed.js';
 import { DIA } from '../js/config.js';
 
 const pub = {
@@ -35,16 +35,6 @@ test('título inteiro no cartão (escondido dos leitores de tela) e uma vez só 
   assert.match(html, new RegExp(`<p class="capa-titulo" aria-hidden="true">${titulo}</p>`));
   assert.match(html, new RegExp(`<h2 class="title">${titulo}</h2>`));
   assert.match(html, /data-tam="p"/);
-});
-
-test('degradê: o matiz depende só do slug e fica entre 0 e 359', () => {
-  assert.equal(matiz('ubuntu-sudo-rust'), matiz('ubuntu-sudo-rust'));
-  assert.notEqual(matiz('a-b-c'), matiz('c-b-a'));
-  for (const slug of ['a', 'ubuntu-sudo-rust', 'x'.repeat(300), 'çã']) {
-    const h = matiz(slug);
-    assert.ok(Number.isInteger(h) && h >= 0 && h < 360, `${slug}: ${h}`);
-  }
-  assert.match(slidePublicacao(pub, 0, { nova: false }), new RegExp(`style="--h:${matiz(pub.slug)}"`));
 });
 
 test('tamanho do título: curto, médio e longo', () => {

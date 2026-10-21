@@ -12,12 +12,12 @@ Leitor da [Newsletter do Filipe Deschamps](https://filipedeschamps.com.br/newsle
 
 ## O que ele faz
 
-- **Feed vertical**, uma publicação por tela. O título aparece inteiro num cartão claro (no estilo do card do TabNews), sobre um degradê sóbrio que tem sempre a mesma cor para a mesma notícia. TabCoins e comentários aparecem como números na linha da data.
+- **Feed vertical**, uma publicação por tela. O título aparece inteiro num cartão claro (no estilo do card do TabNews), sobre um fundo cinza desfocado. TabCoins e comentários aparecem como números na linha da data.
 - **Marcador de leitura automático.** Uma publicação conta como lida depois de 2 segundos na tela. Ao voltar, o feed começa na primeira não lida, e as novas ganham a etiqueta "nova".
 - **Primeira visita:** mostra as últimas 24 horas. Se não houver nada nelas (a newsletter não publica no fim de semana), mostra o último dia com publicações.
 - **Muito tempo sem abrir:** carrega os últimos 7 dias e oferece carregar o restante desde o marcador.
 - **Ir para uma data:** lê desde um dia qualquer até hoje, sem mexer no marcador. O app lembra onde você parou no salto e, ao reabrir, oferece "Continuar" dali (aviso na tela e botão no painel).
-- **Texto completo** com links para o TabNews e para a fonte ("Fonte: Yahoo Finance"). No celular, tocar no card abre o texto (a setinha e o título também); no desktop, o cartão do título, a setinha ou o título. Com o texto aberto, o cabeçalho (data, números, compartilhar e título) fica fixo e só o texto rola. No celular, arrastar para cima rola o texto, para baixo volta e, já no topo, fecha.
+- **Texto completo** com links para o TabNews e para a fonte ("Fonte: Yahoo Finance"). No celular, tocar no card abre o texto (a setinha e o título também); no desktop, o cartão do título, a setinha ou o título. Com o texto aberto, o cabeçalho (data, números, compartilhar e título) fica fixo e só o texto rola. No celular, arrastar para cima rola o texto, para baixo volta e, já no topo (arrastando para baixo) ou no fim (arrastando para cima), fecha.
 - **Instalável no celular** (PWA).
 - **Desktop:** setas na tela e no teclado (↑/↓ ou j/k).
 

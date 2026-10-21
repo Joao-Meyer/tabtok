@@ -166,9 +166,9 @@ function fecharTexto(slide) {
 // Mesmo limite do CSS (@media min-width: 760px): abaixo dele o layout é o de celular.
 const telaDeCelular = () => matchMedia('(max-width: 759px)').matches;
 
-/** Gesto no texto aberto: arrastar para cima rola o texto; para baixo volta; já no topo, fecha. */
+/** Gesto no texto aberto: arrastar para cima rola o texto; para baixo volta; no topo (para baixo) ou no fim (para cima), fecha. */
 const LIMIAR_ARRASTE = 8;   // px até o gesto ter direção
-const LIMIAR_FECHAR = 40;   // px para baixo, no topo, para fechar
+const LIMIAR_FECHAR = 40;   // px de arrasto, no topo ou no fim do texto, para fechar
 let engoliClique = 0;       // depois de um arraste, o clique que o navegador possa gerar é ignorado
 
 function ligarArraste(s, fechar) {
@@ -187,10 +187,11 @@ function ligarArraste(s, fechar) {
     g.dy = dy;
     if (!g.modo && Math.abs(dy) >= LIMIAR_ARRASTE) {
       const max = info.scrollHeight - info.clientHeight;
-      if (dy > 0) g.modo = info.scrollTop < max - 1 ? 'rolar' : 'livre'; // sem mais texto: o feed segue para a próxima
-      else g.modo = info.scrollTop > 0 ? 'rolar' : 'fechar';
+      g.sentido = Math.sign(dy);
+      if (dy > 0) g.modo = info.scrollTop < max - 1 ? 'rolar' : 'fechar'; // já no fim: arrastar mais fecha
+      else g.modo = info.scrollTop > 0 ? 'rolar' : 'fechar';              // já no topo: arrastar mais fecha
     }
-    if (!g.modo || g.modo === 'livre') return;
+    if (!g.modo) return;
     engoliClique = Date.now();
     if (g.modo === 'fechar') { if (e.cancelable) e.preventDefault(); return; }
     // Começou dentro do texto: o próprio navegador rola (com inércia). Fora dele, rolamos à mão.
@@ -198,7 +199,7 @@ function ligarArraste(s, fechar) {
   }, { passive: false });
 
   const fim = () => {
-    if (g?.modo === 'fechar' && -g.dy >= LIMIAR_FECHAR && s.classList.contains('expanded')) fechar();
+    if (g?.modo === 'fechar' && g.dy * g.sentido >= LIMIAR_FECHAR && s.classList.contains('expanded')) fechar();
     g = null;
   };
   card.addEventListener('touchend', fim);

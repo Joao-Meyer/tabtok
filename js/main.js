@@ -241,7 +241,7 @@ function ligarBotoes() {
 async function compartilhar(p) {
   const url = urlNoTabNews(p.slug);
   if (navigator.share) {
-    try { await navigator.share({ title: p.title, url }); return; } catch (e) { if (e.name === 'AbortError') return; }
+    try { await navigator.share({ title: p.title || undefined, url }); return; } catch (e) { if (e.name === 'AbortError') return; }
   }
   try {
     await navigator.clipboard.writeText(url);

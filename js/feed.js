@@ -20,7 +20,13 @@ export const ATRIBUICAO =
   'O TabTok é um projeto independente, sem vínculo oficial.';
 
 /** Tamanho da letra do título no card: g (curto), m (médio) ou p (longo), para o título caber inteiro. */
-export const tamanhoTitulo = (titulo) => (titulo.length <= 60 ? 'g' : titulo.length <= 110 ? 'm' : 'p');
+export const tamanhoTitulo = (titulo) => {
+  const n = String(titulo ?? '').length;
+  return n <= 60 ? 'g' : n <= 110 ? 'm' : 'p';
+};
+
+/** Algumas publicações vêm sem título (null ou vazio): o card mostra este texto no lugar. */
+export const SEM_TITULO = 'Sem título';
 
 const numero = (n) => Number(n) || 0;
 
@@ -35,14 +41,15 @@ export function slidePublicacao(p, i, { nova }) {
   const fonte = nomeFonte(p.source_url);
   const moedas = numero(p.tabcoins);
   const comentarios = numero(p.children_deep_count);
+  const titulo = String(p.title ?? '').trim() || SEM_TITULO;
   // O título aparece uma vez por vez: fechado, no cartão (.capa-texto); aberto, na área de texto (.title).
   return `
-  <section class="slide post" data-i="${i}" data-slug="${esc(p.slug)}" aria-label="${esc(p.title)}">
+  <section class="slide post" data-i="${i}" data-slug="${esc(p.slug)}" aria-label="${esc(titulo)}">
     <div class="col">
       <div class="card">
-        <div class="capa-texto" data-tam="${tamanhoTitulo(p.title)}">
+        <div class="capa-texto" data-tam="${tamanhoTitulo(titulo)}">
           ${ICONES.pasta}
-          <p class="capa-titulo" aria-hidden="true">${esc(p.title)}</p>
+          <p class="capa-titulo" aria-hidden="true">${esc(titulo)}</p>
         </div>
         <div class="info">
           <button class="toggle" aria-expanded="false" aria-label="Expandir texto">${ICONES.seta}</button>
@@ -53,7 +60,7 @@ export function slidePublicacao(p, i, { nova }) {
             <span class="num" aria-label="${comentarios} comentários">${ICONES.comentarios}<span>${comentarios}</span></span>
             <button class="share" data-share aria-label="Compartilhar">${ICONES.compartilhar}</button>
           </div>
-          <h2 class="title">${esc(p.title)}</h2>
+          <h2 class="title">${esc(titulo)}</h2>
           </div>
           <div class="rolagem">
             <p class="summary">Carregando…</p>

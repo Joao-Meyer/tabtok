@@ -1,7 +1,7 @@
 // Seção 4: conteúdo dos cards e atribuição (critério 9).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ATRIBUICAO, slideAviso, slideFim, slidePublicacao, tamanhoTitulo } from '../js/feed.js';
+import { ATRIBUICAO, SEM_TITULO, slideAviso, slideFim, slidePublicacao, tamanhoTitulo } from '../js/feed.js';
 import { DIA } from '../js/config.js';
 
 const pub = {
@@ -35,6 +35,17 @@ test('título inteiro no cartão (escondido dos leitores de tela) e uma vez só 
   assert.match(html, new RegExp(`<p class="capa-titulo" aria-hidden="true">${titulo}</p>`));
   assert.match(html, new RegExp(`<h2 class="title">${titulo}</h2>`));
   assert.match(html, /data-tam="p"/);
+});
+
+test('publicação sem título (null, ausente ou só espaços) não derruba o card', () => {
+  for (const title of [null, undefined, '', '   ']) {
+    const html = slidePublicacao({ ...pub, title }, 0, { nova: false });
+    assert.match(html, new RegExp(`<p class="capa-titulo" aria-hidden="true">${SEM_TITULO}</p>`), String(title));
+    assert.match(html, new RegExp(`<h2 class="title">${SEM_TITULO}</h2>`));
+    assert.match(html, /data-tam="g"/);
+  }
+  assert.equal(tamanhoTitulo(null), 'g');
+  assert.equal(tamanhoTitulo(undefined), 'g');
 });
 
 test('tamanho do título: curto, médio e longo', () => {

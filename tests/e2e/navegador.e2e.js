@@ -31,6 +31,13 @@ for (let d = 20, id = 0; d >= 0; d--) {
   }
 }
 const desc = [...posts].sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
+// A API também devolve os comentários da conta (título nulo, com parent_id). Eles não entram em `posts`,
+// então todas as contagens abaixo só fecham se o app os deixar de fora do feed.
+const respostas = posts.filter((_, i) => i % 5 === 2).map((p, i) => ({
+  id: `c${i}`, slug: `resposta-${i}`, title: null, parent_id: `pai${i}`, body: 'Resposta a um comentário',
+  published_at: new Date(Date.parse(p.published_at) + 60000).toISOString(), tabcoins: 1, children_deep_count: 0, source_url: null,
+}));
+const listaDaApi = [...desc, ...respostas].sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
 const contarDepois = (ms, inclusivo = false) => posts.filter((p) => (inclusivo ? Date.parse(p.published_at) >= ms : Date.parse(p.published_at) > ms)).length;
 const ultimoAntes = (ms) => posts.filter((p) => Date.parse(p.published_at) < ms).at(-1).published_at;
 const THUMB = '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><rect width="1200" height="630" fill="#ddd"/><text x="40" y="330" font-size="110" font-family="sans-serif" font-weight="700" fill="#222">sudo em Rust</text></svg>';
@@ -63,7 +70,7 @@ async function abrir({ viewport = { width: 390, height: 844 }, marcador, toque =
     if (partes.length === 4) {
       const pagina = Number(url.searchParams.get('page'));
       const porPagina = Number(url.searchParams.get('per_page'));
-      return route.fulfill({ contentType: 'application/json', headers: cabecalhos, body: JSON.stringify(desc.slice((pagina - 1) * porPagina, pagina * porPagina)) });
+      return route.fulfill({ contentType: 'application/json', headers: cabecalhos, body: JSON.stringify(listaDaApi.slice((pagina - 1) * porPagina, pagina * porPagina)) });
     }
     if (partes.length === 6) return route.fulfill({ contentType: 'image/svg+xml', headers: cabecalhos, body: THUMB });
     const p = posts.find((x) => x.slug === partes[4]);
@@ -411,6 +418,17 @@ test('celular, texto aberto: arrastar para cima rola o texto, para baixo volta e
   // card fechado: arrastar continua trocando de notícia como antes
   await arrastar(page, 195, 600, -500);
   await page.waitForFunction(() => document.querySelector('#counter').textContent.startsWith('2 /'));
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
+test('comentários da conta não viram cards: nada de "Sem título" no feed', async () => {
+  const { ctx, page, erros } = await abrir();
+  await page.waitForSelector('.post');
+  const titulos = await page.locator('.post .title').allTextContents();
+  assert.ok(titulos.length > 0);
+  assert.ok(titulos.every((t) => t.startsWith('Publicação ')), 'só publicações da newsletter');
+  assert.equal(await page.locator('.post[data-slug^="resposta-"]').count(), 0);
   assert.deepEqual(erros, []);
   await ctx.close();
 });

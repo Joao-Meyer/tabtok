@@ -1,7 +1,7 @@
 // Seção 5: paginação, deduplicação e erros da API, com a rede trocada por dados falsos.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { criarCliente, criarFila, ErroApi } from '../js/api.js';
+import { criarCliente, criarFila, ehComentario, ErroApi } from '../js/api.js';
 import { MAX_PAGINAS, POR_PAGINA, TENTATIVAS } from '../js/config.js';
 
 const semEspera = async () => {};
@@ -27,6 +27,21 @@ function apiFalsa(todas) {
   };
   return { fetch, pedidos };
 }
+
+test('comentários da conta (parent_id ou título nulo) ficam fora das publicações, mas contam na paginação', async () => {
+  const todas = publicacoes(150).map((p, i) => ({ ...p, title: `Título ${i}` }));
+  todas[3] = { ...todas[3], title: null, parent_id: 'outro' };   // resposta a um comentário
+  todas[20] = { ...todas[20], title: null, parent_id: null };    // sem título e sem pai
+  todas[40] = { ...todas[40], parent_id: 'outro' };              // pai, mesmo com título
+  const { fetch, pedidos } = apiFalsa(todas);
+  const cliente = criarCliente({ fetch });
+  await cliente.buscarAte(0);
+  assert.equal(pedidos.length, 2, 'a lista bruta ainda é paginada por inteiro');
+  assert.equal(cliente.publicacoes().length, 147);
+  assert.ok(cliente.publicacoes().every((p) => !ehComentario(p)));
+  assert.equal(ehComentario({ id: 'x', title: 'Post' }), false);
+  assert.equal(ehComentario({ id: 'x' }), false, 'sem os campos, vale como publicação');
+});
 
 test('pede 100 por página, do mais novo para o mais antigo', async () => {
   const { fetch, pedidos } = apiFalsa(publicacoes(50));

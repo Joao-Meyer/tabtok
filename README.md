@@ -32,7 +32,7 @@ As publicações vêm da [API pública do TabNews](https://www.tabnews.com.br), 
 | Lista | `GET /api/v1/contents/NewsletterOficial?page=N&per_page=100&strategy=new` |
 | Texto | `GET /api/v1/contents/NewsletterOficial/{slug}` |
 
-A API não filtra por data. O app pagina do mais novo para o mais antigo até passar do ponto de partida, remove repetições e inverte a ordem.
+A API não filtra por data. O app pagina do mais novo para o mais antigo até passar do ponto de partida, remove repetições e inverte a ordem. A lista do usuário também traz os comentários que a conta escreveu (com `parent_id` e título nulo); o app os descarta, pois não são publicações da newsletter.
 
 Para não sobrecarregar o TabNews quando o período é longo (um salto de meses pode trazer centenas de publicações):
 

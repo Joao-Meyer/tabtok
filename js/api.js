@@ -15,6 +15,12 @@ export const urlPagina = (n) => `${API}?page=${n}&per_page=${POR_PAGINA}&strateg
 export const urlPublicacao = (slug) => `${API}/${encodeURIComponent(slug)}`;
 export const urlNoTabNews = (slug) => `${SITE}/${encodeURIComponent(slug)}`;
 
+/**
+ * A lista do usuário traz também os comentários que a conta escreveu (respostas a outras pessoas).
+ * Eles não são publicações da newsletter: têm `parent_id` e título nulo.
+ */
+export const ehComentario = (p) => Boolean(p.parent_id) || p.title === null;
+
 const dormir = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
 /**
@@ -100,9 +106,9 @@ export function criarCliente({ fetch: buscar = (...a) => globalThis.fetch(...a),
       return paginas;
     },
 
-    /** Todas as publicações já buscadas, sem repetição. */
+    /** Todas as publicações já buscadas, sem repetição e sem os comentários da conta. */
     publicacoes() {
-      return [...brutos.values()];
+      return [...brutos.values()].filter((p) => !ehComentario(p));
     },
 
     get esgotado() {
